@@ -5,6 +5,7 @@
 <p align="center"><strong>Action-conditioned world models for robotics.</strong></p>
 
 <p align="center">
+  <a href="https://pypi.org/project/xwm/"><img alt="PyPI version" src="https://img.shields.io/pypi/v/xwm?style=flat-square&color=059669&labelColor=ffffff"></a>
   <a href="https://www.python.org/downloads/"><img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-059669?style=flat-square&labelColor=ffffff"></a>
   <a href="https://github.com/jax-ml/jax"><img alt="JAX" src="https://img.shields.io/badge/built%20on-JAX%20%20-059669?style=flat-square&labelColor=ffffff"></a>
   <a href="#tests"><img alt="Tests" src="https://img.shields.io/badge/tests-323%20passing-059669?style=flat-square&labelColor=ffffff"></a>
@@ -14,10 +15,13 @@
 
 ---
 
-`xwm` is a JAX-based library for **action-conditioned latent world models**: an encoder
-$h: O \rightarrow Z$, a dynamics model $d: Z \times A \rightarrow Z$, and whatever prediction heads the training signal requires. Every objective and every planner operates in $Z$. The library contains no decoder and no pixel-reconstruction loss. Encoders accept an arbitrary subset of the token grid, so masked positions cost nothing to compute, and planners reach the dynamics through a single $(z, a) \rightarrow z$ closure, which is what lets one set of planners serve every model.
+`xwm` is a JAX-based library for **action-conditioned latent world models**: an encoder $h: O \rightarrow Z$, a dynamics model $d: Z \times A \rightarrow Z$, and whatever prediction heads the training signal requires. Every objective and every planner operates in $Z$. The library contains no decoder and no pixel-reconstruction loss. Encoders accept an arbitrary subset of the token grid, so masked positions cost nothing to compute, and planners reach the dynamics through a single $(z, a) \rightarrow z$ closure, which is what lets one set of planners serve every model.
 
 The components are independently useful: ViT encoders over 2D patches or 3D tubelets and MLP encoders over state vectors; transformer or residual-MLP dynamics; categorical reward and value heads, pessimistic Q-ensembles, squashed-Gaussian policies; latent-prediction, SIGReg, VICReg, InfoNCE and TD objectives; CEM, MPPI, gradient and PUCT-MCTS planners; a family-agnostic trainer with EMA targets, parameter freezing and a trajectory replay buffer.
+
+<p align="center">
+  <img src="docs/assets/world-model-dark.svg" alt="Encoder, latent dynamics and heads" width="720">
+</p>
 
 ## Install
 

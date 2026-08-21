@@ -157,12 +157,12 @@
 
 % ---------------------------------------------------------------------- heads
 \node[stage, right=0.62cm of znext] (heads) {%
-  \stagename{heads}\\[2.5pt]
-  $r_\psi(z, a)$\\[1pt]
-  $Q_\psi(z, a)$\\[1pt]
+  \stagename{heads}\\[3.5pt]
+  $r_\psi(z, a)$\\[3pt]
+  $Q_\psi(z, a)$\\[3pt]
   $\pi_\psi(a \mid z)$%
 };
-\node[below=3.5pt of heads] {\note{reward $\cdot$ value $\cdot$ policy}};
+\node[below=5pt of heads] {\note{reward $\cdot$ value $\cdot$ policy}};
 
 % ---------------------------------------------------------------------- flow
 \draw[flow] (obs) -- (enc);
