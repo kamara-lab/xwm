@@ -1,0 +1,415 @@
+/* ==========================================================================
+   xwm brand theme.
+
+   One hue, taken from the logo: emerald #059669. The logo's geometry gives the
+   rest of the system: 18px cells with a 4.5px radius, a 1:4 radius-to-size ratio
+   that every rounded surface here reuses.
+   ========================================================================== */
+
+:root {
+  --xwm-50:  #ecfdf5;
+  --xwm-100: #d1fae5;
+  --xwm-200: #a7f3d0;
+  --xwm-300: #6ee7b7;
+  --xwm-400: #34d399;
+  --xwm-500: #10b981;
+  --xwm-600: #059669;  /* the logo */
+  --xwm-700: #047857;
+  --xwm-800: #065f46;
+  --xwm-900: #064e3b;
+  --xwm-950: #022c22;
+
+  --xwm-radius: 6px;
+  --md-code-hl-color: var(--xwm-200);
+}
+
+/* --- light ----------------------------------------------------------------
+   Keyed on the primary rather than the scheme, so these hold for the light
+   scheme AND for the server-rendered first paint in "follow system" mode. The
+   slate block below overrides them; equal specificity, so source order decides.
+   -------------------------------------------------------------------------- */
+
+[data-md-color-primary="custom"] {
+  --md-primary-fg-color:          var(--xwm-600);
+  --md-primary-fg-color--light:   var(--xwm-500);
+  --md-primary-fg-color--dark:    var(--xwm-800);
+  --md-primary-bg-color:          #ffffff;
+  --md-primary-bg-color--light:   rgba(255, 255, 255, 0.7);
+
+  --md-accent-fg-color:           var(--xwm-700);
+  --md-accent-fg-color--transparent: rgba(5, 150, 105, 0.1);
+
+  --md-typeset-a-color:           var(--xwm-700);
+  --md-footer-bg-color:           var(--xwm-950);
+  --md-footer-bg-color--dark:     #011a14;
+
+  --xwm-surface:                  var(--xwm-50);
+  --xwm-border:                   rgba(5, 150, 105, 0.18);
+  --xwm-muted:                    #5b6b66;
+}
+
+/* --- dark ---------------------------------------------------------------- */
+
+[data-md-color-scheme="slate"] {
+  --md-hue: 170;
+
+  --md-primary-fg-color:          var(--xwm-900);
+  --md-primary-fg-color--light:   var(--xwm-700);
+  --md-primary-fg-color--dark:    var(--xwm-950);
+  --md-primary-bg-color:          #ffffff;
+  --md-primary-bg-color--light:   rgba(255, 255, 255, 0.7);
+
+  --md-accent-fg-color:           var(--xwm-300);
+  --md-accent-fg-color--transparent: rgba(52, 211, 153, 0.1);
+
+  --md-typeset-a-color:           var(--xwm-400);
+  --md-footer-bg-color:           #0b1512;
+
+  --xwm-surface:                  rgba(16, 185, 129, 0.06);
+  --xwm-border:                   rgba(52, 211, 153, 0.22);
+  --xwm-muted:                    #9aa8a3;
+}
+
+/* --- typography ---------------------------------------------------------- */
+
+.md-typeset {
+  font-feature-settings: "kern", "liga", "calt", "tnum";
+}
+
+.md-typeset h1 {
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--md-default-fg-color);
+}
+
+.md-typeset h2 {
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin-top: 2.2em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
+}
+
+.md-typeset h3,
+.md-typeset h4 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* --- header -------------------------------------------------------------- */
+
+.md-header {
+  box-shadow: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.md-header__title {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.md-header__button.md-logo :is(img, svg) {
+  height: 1.4rem;
+  width: 1.4rem;
+}
+
+.md-tabs {
+  border-bottom: none;
+}
+
+/* --- rounded surfaces, at the logo's 1:4 ratio --------------------------- */
+
+.md-typeset :is(pre, .highlight > pre, .highlighttable, .admonition, details,
+                .tabbed-set > .tabbed-content, table:not([class])) {
+  border-radius: var(--xwm-radius);
+}
+
+.md-typeset .highlight > pre > code,
+.md-typeset pre > code {
+  border-radius: var(--xwm-radius);
+}
+
+.md-typeset code {
+  border-radius: 4px;
+  font-size: 0.82em;
+}
+
+/* --- tables -------------------------------------------------------------- */
+
+.md-typeset table:not([class]) {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  box-shadow: none;
+  font-size: 0.74rem;
+}
+
+.md-typeset table:not([class]) th {
+  background: var(--xwm-surface);
+  color: var(--md-default-fg-color);
+  font-weight: 600;
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.md-typeset table:not([class]) td {
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+  vertical-align: top;
+}
+
+.md-typeset table:not([class]) tr:hover {
+  background: var(--md-accent-fg-color--transparent);
+}
+
+/* A Markdown table always carries a header row, but an RST simple table has no
+   header to put in it, so the converted table arrives with every cell empty.
+   Hide that row rather than render a blank tinted band above the data. */
+.md-typeset table:not([class]) thead:not(:has(th:not(:empty))) {
+  display: none;
+}
+
+.md-typeset table:not([class]) thead:not(:has(th:not(:empty))) + tbody tr:first-child td {
+  border-top: none;
+}
+
+/* --- admonitions: hairline, not candy ------------------------------------ */
+
+.md-typeset :is(.admonition, details) {
+  border-width: 1px;
+  border-left-width: 3px;
+  box-shadow: none;
+  font-size: 0.76rem;
+}
+
+.md-typeset :is(.note, .info, .abstract) {
+  border-color: var(--xwm-border);
+}
+
+.md-typeset :is(.note, .info, .abstract) > :is(.admonition-title, summary) {
+  background: var(--xwm-surface);
+}
+
+/* --- code blocks --------------------------------------------------------- */
+
+.md-typeset .highlight {
+  --md-code-bg-color: var(--md-default-bg-color);
+}
+
+.md-typeset .highlight > pre,
+.md-typeset .highlighttable {
+  border: 1px solid var(--md-default-fg-color--lightest);
+}
+
+.md-typeset .highlight code {
+  font-variant-ligatures: none;
+}
+
+/* --- home: hero ---------------------------------------------------------- */
+
+.xwm-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 2.4rem 0 1.6rem;
+  text-align: center;
+}
+
+.xwm-hero__grid {
+  display: grid;
+  grid-template-columns: repeat(3, 18px);
+  grid-template-rows: repeat(3, 18px);
+  gap: 7px;
+}
+
+.xwm-hero__cell {
+  border-radius: 4.5px;
+  background: var(--xwm-600);
+}
+
+[data-md-color-scheme="slate"] .xwm-hero__cell {
+  background: var(--xwm-400);
+}
+
+.xwm-hero__cell--masked {
+  background: none;
+  border: 2.5px solid var(--xwm-600);
+  opacity: 0.32;
+}
+
+[data-md-color-scheme="slate"] .xwm-hero__cell--masked {
+  border-color: var(--xwm-400);
+  opacity: 0.4;
+}
+
+.xwm-hero__word {
+  font-size: 3rem;
+  font-weight: 650;
+  letter-spacing: -0.055em;
+  line-height: 1;
+  color: var(--xwm-600);
+}
+
+[data-md-color-scheme="slate"] .xwm-hero__word {
+  color: var(--xwm-400);
+}
+
+.xwm-hero__kicker {
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--xwm-600);
+  opacity: 0.8;
+}
+
+[data-md-color-scheme="slate"] .xwm-hero__kicker {
+  color: var(--xwm-400);
+}
+
+.xwm-hero__tagline {
+  max-width: 34rem;
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--xwm-muted);
+}
+
+.md-typeset .xwm-hero + hr {
+  margin-top: 0;
+}
+
+/* --- home: grid cards ---------------------------------------------------- */
+
+.md-typeset .grid.cards > :is(ul, ol) > li,
+.md-typeset .grid > .card {
+  border-radius: var(--xwm-radius);
+  border-color: var(--md-default-fg-color--lightest);
+  box-shadow: none;
+  transition: border-color 125ms, background-color 125ms;
+}
+
+.md-typeset .grid.cards > :is(ul, ol) > li:hover {
+  border-color: var(--xwm-border);
+  background: var(--xwm-surface);
+  box-shadow: none;
+}
+
+.md-typeset .grid.cards > :is(ul, ol) > li > hr {
+  margin: 0.6em 0;
+  border-color: var(--md-default-fg-color--lightest);
+}
+
+/* --- signposts: the two-line "what / where" rows ------------------------- */
+
+.xwm-signpost {
+  display: block;
+  padding: 0.55rem 0.8rem;
+  margin: 0.35rem 0;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-left: 3px solid var(--xwm-600);
+  border-radius: var(--xwm-radius);
+  background: var(--xwm-surface);
+  font-size: 0.76rem;
+}
+
+/* --- api reference ------------------------------------------------------- */
+
+.md-typeset .doc-heading {
+  scroll-margin-top: 4rem;
+}
+
+.md-typeset h2.doc-heading code,
+.md-typeset h3.doc-heading code,
+.md-typeset h4.doc-heading code {
+  background: none;
+  padding: 0;
+  font-size: 0.9em;
+  font-weight: 600;
+  color: inherit;
+}
+
+.md-typeset .doc-symbol-heading,
+.md-typeset .doc-symbol-toc {
+  border-radius: 4px;
+}
+
+.md-typeset .doc-symbol-parameter,
+.md-typeset .doc-symbol-attribute {
+  font-weight: 500;
+}
+
+.md-typeset .doc-contents {
+  border-left: 1px solid var(--md-default-fg-color--lightest);
+  padding-left: 1rem;
+  margin-left: 0.1rem;
+}
+
+.md-typeset .doc-children > div > .doc-contents {
+  margin-bottom: 1.6rem;
+}
+
+.md-typeset .doc-label {
+  border-radius: 3px;
+}
+
+/* --- figures ------------------------------------------------------------- */
+
+.md-typeset figure {
+  margin: 1.4em auto;
+}
+
+.md-typeset figure img {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: var(--xwm-radius);
+}
+
+/* The example figures are PNGs and GIFs drawn on white, so they need an opaque
+   backdrop in dark mode. The diagrams are transparent SVGs and must not get one. */
+.md-typeset figure img[src*="outputs/"] {
+  background: #ffffff;
+}
+
+.md-typeset .xwm-diagram img {
+  border: none;
+  border-radius: 0;
+}
+
+.md-typeset .xwm-diagram {
+  margin: 1.8em auto 2em;
+}
+
+.md-typeset .xwm-diagram figcaption {
+  max-width: 40rem;
+}
+
+.md-typeset .xwm-diagram p {
+  margin: 0;
+}
+
+.md-typeset figcaption {
+  max-width: 34rem;
+  margin: 0.6em auto 0;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  color: var(--xwm-muted);
+}
+
+/* --- footer -------------------------------------------------------------- */
+
+.md-footer-meta {
+  font-size: 0.7rem;
+}
+
+/* --- search -------------------------------------------------------------- */
+
+.md-search__form,
+.md-search__output {
+  border-radius: var(--xwm-radius);
+}
+
+/* --- math ---------------------------------------------------------------- */
+
+.md-typeset mjx-container {
+  font-size: 1.02em;
+}

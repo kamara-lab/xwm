@@ -1,0 +1,19 @@
+\begin{table}[t]
+\centering
+\begin{tabular}{lrrr}
+\toprule
+horizon & model L1 & no-op L1 & ratio \\
+\midrule
+1 & 0.1177 & 0.1382 & 0.8518 \\
+2 & 0.1205 & 0.1569 & 0.7681 \\
+3 & 0.1281 & 0.1670 & 0.7672 \\
+4 & 0.1272 & 0.1703 & 0.7469 \\
+5 & 0.1332 & 0.1734 & 0.7684 \\
+6 & 0.1501 & 0.1879 & 0.7985 \\
+7 & 0.1475 & 0.1847 & 0.7985 \\
+8 & 0.1437 & 0.1808 & 0.7945 \\
+\bottomrule
+\end{tabular}
+\caption{Held-out latent L1 error of a free rollout on a frozen encoder. Ratio below 1 beats assuming nothing changes.}
+\label{tab:horizon}
+\end{table}

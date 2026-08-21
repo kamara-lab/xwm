@@ -1,0 +1,31 @@
+{
+  "columns": [
+    "policy",
+    "mean distance (m)",
+    "% of gap closed"
+  ],
+  "rows": [
+    {
+      "policy": "no-op",
+      "mean distance (m)": 0.24548425214986005,
+      "% of gap closed": 0.0
+    },
+    {
+      "policy": "random",
+      "mean distance (m)": 0.495789360255003,
+      "% of gap closed": -101.9638147510741
+    },
+    {
+      "policy": "policy prior (no planning)",
+      "mean distance (m)": 0.8942442884047827,
+      "% of gap closed": -264.2776595945861
+    },
+    {
+      "policy": "TD-MPC2 + MPPI",
+      "mean distance (m)": 0.20314502529799938,
+      "% of gap closed": 17.24722725839618
+    }
+  ],
+  "caption": "TD-MPC2 on the Franka reach task after 120 iterations. Distances are ground truth; the agent only ever sees reward.",
+  "label": "tab:tdmpc2-franka"
+}

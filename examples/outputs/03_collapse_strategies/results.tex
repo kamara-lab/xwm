@@ -1,0 +1,16 @@
+\begin{table}[t]
+\centering
+\begin{tabular}{lrrrrrr}
+\toprule
+strategy & pred\_loss & reg & feature\_std & mean\_cosine & rankme (of 384) & probe\_r2 \\
+\midrule
+ema (I-JEPA) & 0.0615 & 0.0000 & 0.1381 & 0.9565 & 21.3990 & 0.1880 \\
+sigreg w=5 (LeJEPA) & 0.0006 & 0.0128 & 0.0137 & 0.2802 & 56.9326 & 0.9408 \\
+sigreg w=20 (LeJEPA) & 0.0319 & 0.0058 & 0.0379 & 0.1051 & 93.0844 & 0.9602 \\
+vicreg w=1 & 0.0772 & 0.6216 & 0.1369 & 0.8752 & 210.1788 & 0.3293 \\
+none (control) & 0.0000 & 0.0000 & 0.0000 & 1.0000 & 91.1569 & 0.9818 \\
+\bottomrule
+\end{tabular}
+\caption{Anti-collapse strategies on 2048 sprite images, 4000 steps, 384-dim embeddings. Lower prediction loss does not mean a better representation.}
+\label{tab:collapse}
+\end{table}

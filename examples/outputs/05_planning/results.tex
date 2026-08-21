@@ -1,0 +1,15 @@
+\begin{table}[t]
+\centering
+\begin{tabular}{lrrrr}
+\toprule
+policy & mean & median & worst & \% of gap closed \\
+\midrule
+no-op & 0.4204 & 0.4148 & 0.8240 & 0.0000 \\
+random & 0.6276 & 0.6551 & 1.1673 & -49.2979 \\
+planner & 0.1861 & 0.0941 & 1.2059 & 55.7356 \\
+oracle & 0.0000 & 0.0000 & 0.0000 & 100.0000 \\
+\bottomrule
+\end{tabular}
+\caption{True distance to the goal after 6 steps, 32 episodes. The planner optimises a latent cost and never sees these positions.}
+\label{tab:planning}
+\end{table}

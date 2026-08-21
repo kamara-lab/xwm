@@ -1,0 +1,42 @@
+{
+  "columns": [
+    "quantity",
+    "value"
+  ],
+  "rows": [
+    {
+      "quantity": "probe R2 (before)",
+      "value": 0.9990554451942444
+    },
+    {
+      "quantity": "probe R2 (after)",
+      "value": 0.8215896487236023
+    },
+    {
+      "quantity": "prediction loss (first)",
+      "value": 0.5526021122932434
+    },
+    {
+      "quantity": "prediction loss (last)",
+      "value": 0.043314557522535324
+    },
+    {
+      "quantity": "rankme",
+      "value": 10.60596752166748
+    },
+    {
+      "quantity": "rank_ratio",
+      "value": 0.027619708329439163
+    },
+    {
+      "quantity": "feature_std",
+      "value": 0.03981351852416992
+    },
+    {
+      "quantity": "mean_cosine",
+      "value": 0.9902404546737671
+    }
+  ],
+  "caption": "I-JEPA on 128x128 sprite images, 4000 steps.",
+  "label": "tab:ijepa"
+}

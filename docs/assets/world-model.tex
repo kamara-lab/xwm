@@ -1,0 +1,212 @@
+% The diagram on the documentation home page: an action-conditioned latent world
+% model, drawn in TikZ so the maths is set by LaTeX rather than faked in SVG text.
+%
+% The observation is a real frame from xwm.envs.FrankaEnv, so the picture shows
+% what the encoder actually consumes rather than a stand-in box. To regenerate
+% franka-observation.png (needs the `newton` extra):
+%
+%   import numpy as np; from PIL import Image; import xwm
+%   env = xwm.envs.FrankaEnv(xwm.envs.FrankaConfig(
+%       image_size=64, enable_shadows=True, enable_textures=True))
+%   env.reset(seed=1)
+%   rgb = np.transpose(env.render(768, samples=3), (1, 2, 0))
+%   ys, xs = np.nonzero(rgb.mean(axis=2) > 0.72)      # the arm is the bright part
+%   side = (ys.max() - ys.min()) + 28
+%   top, left = max(0, ys.min() - 14), int(np.clip((xs.min() + xs.max()) // 2 - side // 2, 0, 768 - side))
+%   crop = rgb[top:top + side, left:left + side]
+%   Image.fromarray((crop * 255).astype(np.uint8)).resize((340, 340), Image.LANCZOS) \
+%        .save("docs/assets/franka-observation.png", optimize=True)
+%
+% The dark-theme copy is the same frame under a gamma of 1.9, which sinks the
+% flat sky and floor toward the page background while leaving the lit arm bright:
+%
+%   src = np.asarray(Image.open(".../franka-observation.png").convert("RGB"), np.float32) / 255
+%   Image.fromarray(((src ** 1.9) * 255).astype(np.uint8)) \
+%        .save("docs/assets/franka-observation-dark.png", optimize=True)
+%
+% Build both themes and convert to SVG (requires TeX Live and poppler):
+%
+%   cd docs/assets
+%   pdflatex -jobname=world-model-light "\def\xwmtheme{light}\input{world-model.tex}"
+%   pdflatex -jobname=world-model-dark  "\def\xwmtheme{dark}\input{world-model.tex}"
+%   pdftocairo -svg world-model-light.pdf world-model-light.svg
+%   pdftocairo -svg world-model-dark.pdf  world-model-dark.svg
+%
+% The SVGs are committed, so neither the docs build nor CI needs LaTeX.
+%
+\documentclass[border=4pt]{standalone}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, fit, calc, backgrounds}
+
+% Theme, set on the command line. Light is the default so a bare compile works.
+\providecommand{\xwmtheme}{light}
+\def\xwmlight{light}
+
+\definecolor{emerald}{HTML}{059669}
+\definecolor{emeraldlight}{HTML}{34D399}
+
+\ifx\xwmtheme\xwmlight
+  \colorlet{accent}{emerald}
+  \definecolor{ink}{HTML}{0B3B2E}
+  \definecolor{muted}{HTML}{5B6B66}
+  \definecolor{chiptext}{HTML}{FFFFFF}
+  \definecolor{coretitle}{HTML}{065F46}
+  \def\boxfill{white}
+  \def\boxfillop{1}
+  \def\zonefillop{0.05}
+  \def\corefillop{0.10}
+  \def\boxlineop{0.40}
+  \def\zonelineop{0.34}
+  \def\corelineop{0.66}
+  \def\arrowop{0.72}
+  \def\obsimage{franka-observation.png}
+\else
+  \colorlet{accent}{emeraldlight}
+  \definecolor{ink}{HTML}{E4EDE9}
+  \definecolor{muted}{HTML}{9AA8A3}
+  \definecolor{chiptext}{HTML}{052E24}
+  \definecolor{coretitle}{HTML}{A7F3D0}
+  \def\boxfill{white}
+  \def\boxfillop{0.04}
+  \def\zonefillop{0.05}
+  \def\corefillop{0.15}
+  \def\boxlineop{0.42}
+  \def\zonelineop{0.28}
+  \def\corelineop{0.60}
+  \def\arrowop{0.80}
+  \def\obsimage{franka-observation-dark.png}
+\fi
+
+% Sans for the words, LaTeX maths for everything that is a symbol.
+\newcommand{\stagename}[1]{{\sffamily\bfseries\small\color{ink}#1}}
+\newcommand{\corename}[1]{{\sffamily\bfseries\small\color{coretitle}#1}}
+\newcommand{\note}[1]{{\sffamily\fontsize{6.4}{7.6}\selectfont\color{muted}#1}}
+\newcommand{\kicker}[1]{{\sffamily\bfseries\fontsize{6}{7}\selectfont\color{accent}#1}}
+
+\begin{document}
+\color{ink}
+\begin{tikzpicture}[
+  x=1cm, y=1cm,
+  font=\footnotesize,
+  every node/.style={outer sep=0pt, text=ink},
+  stage/.style={
+    draw=accent, draw opacity=\boxlineop, line width=0.5pt, rounded corners=4.5pt,
+    fill=\boxfill, fill opacity=\boxfillop, text opacity=1,
+    align=center, inner sep=4.5pt, minimum height=1.05cm, text=ink,
+  },
+  core/.style={
+    draw=accent, draw opacity=\corelineop, line width=0.7pt, rounded corners=4.5pt,
+    fill=accent, fill opacity=\corefillop, text opacity=1,
+    align=center, inner sep=4.5pt, minimum height=1.05cm, text=ink,
+  },
+  chip/.style={
+    draw=none, fill=accent, rounded corners=3.5pt, text=chiptext,
+    align=center, inner sep=3pt, minimum height=0.66cm, minimum width=0.92cm,
+  },
+  input/.style={
+    draw=accent, draw opacity=\boxlineop, line width=0.5pt, dash pattern=on 2pt off 1.6pt,
+    rounded corners=3.5pt, fill=\boxfill, fill opacity=\boxfillop, text opacity=1,
+    align=center, inner sep=4pt, text=ink,
+  },
+  flow/.style={
+    draw=accent, draw opacity=\arrowop, line width=0.6pt,
+    -{Stealth[length=3.6pt, width=2.8pt]},
+  },
+  loop/.style={
+    draw=accent, draw opacity=0.62, line width=0.55pt, dash pattern=on 2.4pt off 1.8pt,
+    rounded corners=4pt, -{Stealth[length=3.2pt, width=2.6pt]},
+  },
+]
+
+% ---------------------------------------------------------------- observation
+% A real Franka FR3 frame, at the resolution the encoder is given.
+\node[minimum size=1.62cm, inner sep=0pt] (obs) at (0, 0) {};
+\begin{scope}
+  \clip[rounded corners=4.5pt] (obs.south west) rectangle (obs.north east);
+  \node[inner sep=0pt] at (obs.center) {\includegraphics[width=1.62cm]{\obsimage}};
+\end{scope}
+\draw[draw=accent, draw opacity=\boxlineop, line width=0.5pt, rounded corners=4.5pt]
+  (obs.south west) rectangle (obs.north east);
+
+\node[below=3.5pt of obs, align=center] (obscap) {%
+  $o_t \in \mathcal{O}$\\[1pt]
+  \note{Franka FR3, pixels or state}%
+};
+
+% -------------------------------------------------------------------- encoder
+\node[stage, right=0.62cm of obs] (enc) {%
+  \stagename{encoder}\\[2.5pt]
+  $h_\theta \colon \mathcal{O} \to \mathcal{Z}$%
+};
+
+% ------------------------------------------------------------- latent dynamics
+\node[chip, right=0.62cm of enc] (zt) {$z_t$};
+\node[core, right=0.62cm of zt] (dyn) {%
+  \corename{dynamics}\\[2.5pt]
+  $d_\phi \colon \mathcal{Z} \times \mathcal{A} \to \mathcal{Z}$%
+};
+\node[chip, right=0.62cm of dyn] (znext) {$z_{t+1}$};
+
+\node[input, below=0.72cm of dyn] (act) {$a_t \in \mathcal{A}$};
+
+% ---------------------------------------------------------------------- heads
+\node[stage, right=0.62cm of znext] (heads) {%
+  \stagename{heads}\\[2.5pt]
+  $r_\psi(z, a)$\\[1pt]
+  $Q_\psi(z, a)$\\[1pt]
+  $\pi_\psi(a \mid z)$%
+};
+\node[below=3.5pt of heads] {\note{reward $\cdot$ value $\cdot$ policy}};
+
+% ---------------------------------------------------------------------- flow
+\draw[flow] (obs) -- (enc);
+\draw[flow] (enc) -- (zt);
+\draw[flow] (zt) -- (dyn);
+\draw[flow] (dyn) -- (znext);
+\draw[flow] (znext) -- (heads);
+\draw[flow] (act) -- (dyn);
+
+% The rollout: feed the prediction back in with the next action.
+\coordinate (loopmid) at ($(dyn.north)!0.5!(znext.north)$);
+\draw[loop] (znext.north) |- ($(loopmid) + (0, 0.62)$) -| (dyn.north);
+\node[above=0.66cm of loopmid, anchor=south, align=center] {%
+  $z_{t+k+1} = d_\phi\!\left(z_{t+k},\, a_{t+k}\right)$\\[1pt]
+  \note{imagine, without leaving $\mathcal{Z}$}%
+};
+
+% --------------------------------------------------- what is deliberately absent
+\node[align=left, anchor=north west] at ($(obs.west |- obscap.south) + (-0.06, -0.16)$) {%
+  \note{$\times$\; no decoder $\mathcal{Z} \to \mathcal{O}$}\\[2pt]
+  \note{$\times$\; no pixel-reconstruction loss}%
+};
+
+% ------------------------------------------------------------- the latent space
+\begin{pgfonlayer}{background}
+  \node[
+    draw=accent, draw opacity=\zonelineop, line width=0.55pt,
+    dash pattern=on 2.6pt off 2.2pt, rounded corners=7pt,
+    fill=accent, fill opacity=\zonefillop,
+    fit=(zt) (dyn) (znext) (act), inner ysep=9pt, inner xsep=11pt,
+  ] (zone) {};
+\end{pgfonlayer}
+\node[above right=1.5pt and 1pt of zone.north west, anchor=south west]
+  {\kicker{LATENT SPACE} $\mathcal{Z}$};
+
+% ------------------------------------------------------------------- planning
+\coordinate (figmid) at ($(obs)!0.5!(heads)$);
+\node[anchor=north, align=center] at ($(figmid |- zone.south) + (0, -0.44)$) {%
+  \kicker{PLANNING}\\[3pt]
+  $\displaystyle a^{\star}_{t:t+H}
+     = \operatorname*{arg\,min}_{a_{t:t+H}}
+       \sum_{k=0}^{H} c\!\left(z_{t+k},\, a_{t+k}\right)$\\[2pt]
+  \note{one closure, $(z, a) \mapsto z'$, is all a planner ever sees}%
+};
+
+\end{tikzpicture}
+\end{document}

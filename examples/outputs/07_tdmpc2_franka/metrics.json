@@ -1,0 +1,14 @@
+{
+  "iterations": 120,
+  "episodes_collected": 1160,
+  "buffer_steps": 23200,
+  "horizon": 3,
+  "final_distance": 0.20314502529799938,
+  "final_return": -3.219093064467112,
+  "policy_only_distance": 0.8942442884047827,
+  "noop_distance": 0.24548425214986005,
+  "random_distance": 0.495789360255003,
+  "loss_consistency": 1.7413933277130127,
+  "loss_reward": 0.9730004072189331,
+  "loss_value": 0.3498198986053467
+}

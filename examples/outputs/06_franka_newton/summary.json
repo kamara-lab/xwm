@@ -1,0 +1,66 @@
+{
+  "columns": [
+    "quantity",
+    "value"
+  ],
+  "rows": [
+    {
+      "quantity": "image size",
+      "value": 128
+    },
+    {
+      "quantity": "solver",
+      "value": "mujoco"
+    },
+    {
+      "quantity": "shadows",
+      "value": true
+    },
+    {
+      "quantity": "textures",
+      "value": true
+    },
+    {
+      "quantity": "training episodes",
+      "value": 2048
+    },
+    {
+      "quantity": "held-out episodes",
+      "value": 256
+    },
+    {
+      "quantity": "frames per episode",
+      "value": 8
+    },
+    {
+      "quantity": "encoder loss (final)",
+      "value": 0.12763623893260956
+    },
+    {
+      "quantity": "teacher-forcing loss",
+      "value": 0.05295898765325546
+    },
+    {
+      "quantity": "rollout loss",
+      "value": 0.055766452103853226
+    },
+    {
+      "quantity": "joint-angle probe R2",
+      "value": 0.365764856338501
+    },
+    {
+      "quantity": "planner % of gap closed",
+      "value": 10.707393114843489
+    },
+    {
+      "quantity": "rollout/no-op ratio at h=1",
+      "value": 0.9705297350883484
+    },
+    {
+      "quantity": "rollout/no-op ratio at h=7",
+      "value": 0.7371922731399536
+    }
+  ],
+  "caption": "Franka world-model summary.",
+  "label": "tab:franka-summary"
+}

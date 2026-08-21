@@ -1,0 +1,219 @@
+site_name: xwm
+site_description: Action-conditioned world models for robotics, in JAX.
+site_url: https://kleyt0n.github.io/xwm/
+site_author: Kleyton Costa
+repo_url: https://github.com/Kleyt0n/xwm
+repo_name: Kleyt0n/xwm
+edit_uri: edit/main/docs/
+copyright: Apache-2.0
+
+theme:
+  name: material
+  logo: assets/logo-white.svg
+  favicon: assets/favicon.svg
+  font:
+    text: Inter
+    code: JetBrains Mono
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    # The "follow system" entry needs the custom colours too: Material renders
+    # the FIRST entry's palette server-side and only swaps to the matching
+    # light/dark entry once its JS runs. Without these, a cold load flashes
+    # Material's default indigo before turning emerald.
+    - media: "(prefers-color-scheme)"
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-auto
+        name: Follow system
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
+  features:
+    - announce.dismiss
+    - content.code.annotate
+    - content.code.copy
+    - content.tabs.link
+    - content.tooltips
+    - navigation.indexes
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.suggest
+    - toc.follow
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Kleyt0n/xwm
+      name: xwm on GitHub
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/xwm/
+      name: xwm on PyPI
+
+hooks:
+  - docs/hooks/figures.py
+
+# Build sources that live next to the docs but should not be published: the
+# diagram's LaTeX source and its by-products, the build hooks (which MkDocs loads
+# from disk by path, so excluding them here costs nothing), and the observation
+# frames, which LaTeX has already embedded in the diagram SVGs.
+exclude_docs: |
+  *.tex
+  *.aux
+  *.log
+  *.pdf
+  hooks/
+  assets/franka-observation*.png
+
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [.]
+          options:
+            docstring_style: google
+            docstring_section_style: table
+            # Several docstrings document two parameters on one line
+            # ("depth, num_heads: ..."), which Griffe cannot match against the
+            # signature. That is the library's style, not a defect, so the
+            # mismatch is not worth failing a --strict build over.
+            docstring_options:
+              ignore_init_summary: true
+              trim_doctest_flags: true
+              warn_missing_types: false
+              warn_unknown_params: false
+            extensions:
+              - docs/hooks/rst_docstrings.py:RstToMarkdown
+            filters: ["!^_"]
+            heading_level: 3
+            inherited_members: false
+            line_length: 88
+            members_order: source
+            merge_init_into_class: true
+            parameter_headings: false
+            separate_signature: true
+            show_bases: true
+            show_if_no_docstring: false
+            show_labels: false
+            show_root_full_path: false
+            show_root_heading: false
+            show_signature_annotations: true
+            show_source: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            signature_crossrefs: true
+            summary: true
+            unwrap_annotated: true
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      toc_depth: 3
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem
+  - pymdownx.caret
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+nav:
+  - Home: index.md
+  - Getting started:
+      - Installation: getting-started/installation.md
+      - Quickstart: getting-started/quickstart.md
+      - Conventions: getting-started/conventions.md
+  - Concepts:
+      - concepts/index.md
+      - Masking: concepts/masking.md
+      - Collapse: concepts/collapse.md
+      - Planning: concepts/planning.md
+      - Diagnostics: concepts/diagnostics.md
+      - Randomness: concepts/randomness.md
+  - Models:
+      - families/index.md
+      - JEPA: families/jepa.md
+      - TD-MPC2: families/tdmpc2.md
+      - MuZero: families/muzero.md
+  - Guides:
+      - Training: guides/training.md
+      - Robotics: guides/robotics.md
+      - Rendering: guides/rendering.md
+      - Figures and tables: guides/figures.md
+      - Running on GPU: guides/gpu.md
+      - Examples: guides/examples.md
+  - Findings: findings.md
+  - API reference:
+      - reference/index.md
+      - xwm.core: reference/core.md
+      - xwm.nn: reference/nn.md
+      - xwm.encoders: reference/encoders.md
+      - xwm.dynamics: reference/dynamics.md
+      - xwm.heads: reference/heads.md
+      - xwm.masking: reference/masking.md
+      - xwm.objectives: reference/objectives.md
+      - xwm.families: reference/families.md
+      - xwm.planning: reference/planning.md
+      - xwm.training: reference/training.md
+      - xwm.envs: reference/envs.md
+      - xwm.data: reference/data.md
+      - xwm.metrics: reference/metrics.md
+      - xwm.plots: reference/plots.md
+      - xwm.tools: reference/tools.md

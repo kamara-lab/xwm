@@ -1,0 +1,41 @@
+{
+  "columns": [
+    "policy",
+    "mean",
+    "median",
+    "worst",
+    "% of gap closed"
+  ],
+  "rows": [
+    {
+      "policy": "no-op",
+      "mean": 0.4203813672065735,
+      "median": 0.4148179888725281,
+      "worst": 0.8240088224411011,
+      "% of gap closed": 0.0
+    },
+    {
+      "policy": "random",
+      "mean": 0.6276206970214844,
+      "median": 0.6550776958465576,
+      "worst": 1.1673436164855957,
+      "% of gap closed": -49.297934204841766
+    },
+    {
+      "policy": "planner",
+      "mean": 0.186079204082489,
+      "median": 0.09412039816379547,
+      "worst": 1.2058534622192383,
+      "% of gap closed": 55.735620415580755
+    },
+    {
+      "policy": "oracle",
+      "mean": 0.0,
+      "median": 0.0,
+      "worst": 0.0,
+      "% of gap closed": 100.0
+    }
+  ],
+  "caption": "True distance to the goal after 6 steps, 32 episodes. The planner optimises a latent cost and never sees these positions.",
+  "label": "tab:planning"
+}

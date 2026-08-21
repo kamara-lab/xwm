@@ -1,0 +1,170 @@
+# Publish a release to PyPI.
+#
+# Triggered by pushing a tag: `git tag v0.1.0 && git push origin v0.1.0`.
+# The tag must match `version` in pyproject.toml, which the first job checks
+# before anything is built or published.
+#
+# One-time setup on PyPI (Trusted Publishing, so there is no API token to leak):
+#   pypi.org -> your project -> Publishing -> Add a pending publisher
+#     Owner: Kleyt0n     Repository: xwm
+#     Workflow: release.yml     Environment: pypi
+# Then create a `pypi` environment under Settings -> Environments, and require
+# whatever reviewers you want on it. If you would rather use a token, replace the
+# publish step's OIDC with `password: ${{ secrets.PYPI_API_TOKEN }}`.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Where to publish
+        type: choice
+        default: testpypi
+        options: [testpypi, pypi]
+
+permissions:
+  contents: read
+
+env:
+  FORCE_COLOR: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      # A tag that disagrees with the packaged version produces a release nobody
+      # can reproduce, so stop here rather than after publishing.
+      - name: Tag matches pyproject version
+        id: version
+        run: |
+          version=$(python -c "import tomllib,pathlib; \
+            print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "pyproject version: $version"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            tag="${GITHUB_REF_NAME#v}"
+            echo "tag version:        $tag"
+            if [ "$tag" != "$version" ]; then
+              echo "::error::tag v$tag does not match pyproject version $version"
+              exit 1
+            fi
+          fi
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: ruff check
+        run: ruff check --output-format=github .
+
+      - name: pytest
+        run: pytest -q
+
+  build:
+    name: Build
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install build tooling
+        run: pip install build twine
+
+      - name: Build sdist and wheel
+        run: python -m build
+
+      - name: Check metadata
+        run: twine check --strict dist/*
+
+      - name: Show what will be published
+        run: ls -lh dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish-testpypi:
+    name: Publish to TestPyPI
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/xwm
+    permissions:
+      id-token: write        # Trusted Publishing: mints a short-lived OIDC token
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    if: github.event_name == 'push' || inputs.target == 'pypi'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: pypi
+      url: https://pypi.org/p/xwm
+    permissions:
+      id-token: write        # Trusted Publishing: mints a short-lived OIDC token
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    name: GitHub release
+    needs: [verify, publish]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write        # to create the release and attach the artifacts
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/* \
+            --title "xwm ${{ needs.verify.outputs.version }}" \
+            --generate-notes \
+            --verify-tag

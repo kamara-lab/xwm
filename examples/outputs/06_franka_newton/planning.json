@@ -1,0 +1,54 @@
+{
+  "columns": [
+    "policy",
+    "mean (m)",
+    "median (m)",
+    "worst (m)",
+    "% of gap closed",
+    "mean |a|"
+  ],
+  "rows": [
+    {
+      "policy": "no-op",
+      "mean (m)": 0.24646732723340392,
+      "median (m)": 0.23084118962287903,
+      "worst (m)": 0.4690992832183838,
+      "% of gap closed": 0.0,
+      "mean |a|": null
+    },
+    {
+      "policy": "random",
+      "mean (m)": 0.3446759673533961,
+      "median (m)": 0.3757169395685196,
+      "worst (m)": 0.8154120445251465,
+      "% of gap closed": -39.8465148392626,
+      "mean |a|": null
+    },
+    {
+      "policy": "planner (a_pen=0)",
+      "mean (m)": 0.22007710160687566,
+      "median (m)": 0.20034631341695786,
+      "worst (m)": 0.556699275970459,
+      "% of gap closed": 10.707393114843489,
+      "mean |a|": 0.21312440186738968
+    },
+    {
+      "policy": "planner (a_pen=0.05)",
+      "mean (m)": 0.19333532731980085,
+      "median (m)": 0.18287085741758347,
+      "worst (m)": 0.3636176884174347,
+      "% of gap closed": 21.55742122495904,
+      "mean |a|": 0.08956303005106747
+    },
+    {
+      "policy": "oracle",
+      "mean (m)": 0.0,
+      "median (m)": 0.0,
+      "worst (m)": 0.0,
+      "% of gap closed": 100.0,
+      "mean |a|": null
+    }
+  ],
+  "caption": "Franka tool distance to a goal image after 5 steps. The planner optimises a latent cost and never sees these positions.",
+  "label": "tab:franka-planning"
+}

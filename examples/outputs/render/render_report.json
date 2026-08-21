@@ -1,0 +1,15 @@
+{
+  "backends": {
+    "warp": true,
+    "rtx": true,
+    "usd": true
+  },
+  "solver": "mujoco",
+  "written": [
+    "warp.gif",
+    "warp_frames.png",
+    "franka.usd"
+  ],
+  "rtx": "failed: RuntimeError: Failed to create OVRTX renderer: Failed to create renderer: Failed to initialize renderer.\nconfig: RendererConfig(log_level='error')",
+  "usd": "ok"
+}

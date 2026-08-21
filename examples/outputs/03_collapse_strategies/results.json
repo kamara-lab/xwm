@@ -1,0 +1,60 @@
+{
+  "columns": [
+    "strategy",
+    "pred_loss",
+    "reg",
+    "feature_std",
+    "mean_cosine",
+    "rankme (of 384)",
+    "probe_r2"
+  ],
+  "rows": [
+    {
+      "strategy": "ema (I-JEPA)",
+      "pred_loss": 0.06152701377868652,
+      "reg": 0.0,
+      "feature_std": 0.1381273865699768,
+      "mean_cosine": 0.956530749797821,
+      "rankme (of 384)": 21.399023056030273,
+      "probe_r2": 0.18798142671585083
+    },
+    {
+      "strategy": "sigreg w=5 (LeJEPA)",
+      "pred_loss": 0.0006280803354457021,
+      "reg": 0.012813030742108822,
+      "feature_std": 0.01367065217345953,
+      "mean_cosine": 0.2802380919456482,
+      "rankme (of 384)": 56.932552337646484,
+      "probe_r2": 0.9407625198364258
+    },
+    {
+      "strategy": "sigreg w=20 (LeJEPA)",
+      "pred_loss": 0.03185649961233139,
+      "reg": 0.005838019773364067,
+      "feature_std": 0.03788798674941063,
+      "mean_cosine": 0.10506486892700195,
+      "rankme (of 384)": 93.08442687988281,
+      "probe_r2": 0.9601909518241882
+    },
+    {
+      "strategy": "vicreg w=1",
+      "pred_loss": 0.07724917680025101,
+      "reg": 0.6215553879737854,
+      "feature_std": 0.13686637580394745,
+      "mean_cosine": 0.8751931190490723,
+      "rankme (of 384)": 210.17880249023438,
+      "probe_r2": 0.32927632331848145
+    },
+    {
+      "strategy": "none (control)",
+      "pred_loss": 1.9691549724143442e-08,
+      "reg": 0.0,
+      "feature_std": 1.710419383016415e-05,
+      "mean_cosine": 1.000028133392334,
+      "rankme (of 384)": 91.15690612792969,
+      "probe_r2": 0.9818347692489624
+    }
+  ],
+  "caption": "Anti-collapse strategies on 2048 sprite images, 4000 steps, 384-dim embeddings. Lower prediction loss does not mean a better representation.",
+  "label": "tab:collapse"
+}

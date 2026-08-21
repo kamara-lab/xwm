@@ -1,0 +1,60 @@
+{
+  "columns": [
+    "horizon",
+    "model L1",
+    "no-op L1",
+    "ratio"
+  ],
+  "rows": [
+    {
+      "horizon": 1,
+      "model L1": 0.11769436299800873,
+      "no-op L1": 0.13816748559474945,
+      "ratio": 0.8518238663673401
+    },
+    {
+      "horizon": 2,
+      "model L1": 0.1204928457736969,
+      "no-op L1": 0.15686818957328796,
+      "ratio": 0.768115222454071
+    },
+    {
+      "horizon": 3,
+      "model L1": 0.12814980745315552,
+      "no-op L1": 0.1670314073562622,
+      "ratio": 0.7672198414802551
+    },
+    {
+      "horizon": 4,
+      "model L1": 0.12716475129127502,
+      "no-op L1": 0.17026552557945251,
+      "ratio": 0.746861457824707
+    },
+    {
+      "horizon": 5,
+      "model L1": 0.13324537873268127,
+      "no-op L1": 0.17340366542339325,
+      "ratio": 0.7684115767478943
+    },
+    {
+      "horizon": 6,
+      "model L1": 0.150081604719162,
+      "no-op L1": 0.18794718384742737,
+      "ratio": 0.7985306978225708
+    },
+    {
+      "horizon": 7,
+      "model L1": 0.14745557308197021,
+      "no-op L1": 0.18467089533805847,
+      "ratio": 0.7984775900840759
+    },
+    {
+      "horizon": 8,
+      "model L1": 0.1436510682106018,
+      "no-op L1": 0.18080556392669678,
+      "ratio": 0.794505774974823
+    }
+  ],
+  "caption": "Held-out latent L1 error of a free rollout on a frozen encoder. Ratio below 1 beats assuming nothing changes.",
+  "label": "tab:horizon"
+}

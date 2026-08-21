@@ -1,0 +1,78 @@
+[project]
+name = "xwm"
+version = "0.1.0"
+description = "xwm: building blocks for predictive world models in JAX"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Kleyton Costa" }]
+keywords = ["jax", "world-models", "jepa", "self-supervised", "robotics", "planning"]
+classifiers = [
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+  "jax>=0.4.38",
+  "equinox>=0.11.8",
+  "optax>=0.2.4",
+  "numpy>=1.26",
+  "einops>=0.8.0",
+]
+
+[project.optional-dependencies]
+plots = ["matplotlib>=3.8", "pillow>=10.0"]
+# Newton needs GitPython to fetch robot assets and trimesh/pycollada to read
+# the Franka URDF's meshes; none of them are Newton install-time requirements.
+newton = [
+  "newton>=1.5",
+  "warp-lang>=1.16",
+  "GitPython>=3.1",
+  "trimesh>=4.0",
+  "pycollada>=0.8",
+  "usd-core>=25.0",           # ViewerUSD: export a stage for offline rendering
+]
+# Photorealistic rendering through Newton's OVRTX path tracer. NVIDIA GPUs only;
+# on other platforms use the "usd" backend and render the stage offline.
+render = [
+  "ovrtx",                    # the path tracer itself
+  "pyglet>=2.0",              # ViewerRTX's camera maths, headless included
+]
+dev = [
+  "pytest>=8.0",
+  "matplotlib>=3.8",
+  "pillow>=10.0",
+  "ruff>=0.6",
+]
+# The API reference imports the package, so `docs` is additive to the core install
+# rather than standalone.
+docs = [
+  "mkdocs>=1.6",
+  "mkdocs-material>=9.5",
+  "mkdocstrings[python]>=0.26",
+]
+
+[project.urls]
+Homepage = "https://kleyt0n.github.io/xwm/"
+Documentation = "https://kleyt0n.github.io/xwm/"
+Repository = "https://github.com/Kleyt0n/xwm"
+Issues = "https://github.com/Kleyt0n/xwm/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["xwm"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E741"]

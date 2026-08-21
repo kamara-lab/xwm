@@ -1,0 +1,25 @@
+\begin{table}[t]
+\centering
+\begin{tabular}{lr}
+\toprule
+quantity & value \\
+\midrule
+image size & 128 \\
+solver & mujoco \\
+shadows & yes \\
+textures & yes \\
+training episodes & 2048 \\
+held-out episodes & 256 \\
+frames per episode & 8 \\
+encoder loss (final) & 0.1276 \\
+teacher-forcing loss & 0.0530 \\
+rollout loss & 0.0558 \\
+joint-angle probe R2 & 0.3658 \\
+planner \% of gap closed & 10.7074 \\
+rollout/no-op ratio at h=1 & 0.9705 \\
+rollout/no-op ratio at h=7 & 0.7372 \\
+\bottomrule
+\end{tabular}
+\caption{Franka world-model summary.}
+\label{tab:franka-summary}
+\end{table}

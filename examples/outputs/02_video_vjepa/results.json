@@ -1,0 +1,36 @@
+{
+  "columns": [
+    "preset",
+    "tubes",
+    "tokens/tube",
+    "context",
+    "loss",
+    "feature_std",
+    "mean_cosine",
+    "rankme"
+  ],
+  "rows": [
+    {
+      "preset": "short-range",
+      "tubes": 8,
+      "tokens/tube": 36,
+      "context": 69,
+      "loss": 0.45117250084877014,
+      "feature_std": 0.7331372499465942,
+      "mean_cosine": 0.21001842617988586,
+      "rankme": 15.137578010559082
+    },
+    {
+      "preset": "long-range",
+      "tubes": 2,
+      "tokens/tube": 100,
+      "context": 86,
+      "loss": 0.27256837487220764,
+      "feature_std": 0.5899882316589355,
+      "mean_cosine": 0.4687727391719818,
+      "rankme": 22.680721282958984
+    }
+  ],
+  "caption": "V-JEPA tube-masking presets on 128x128x8 clips, 4000 steps.",
+  "label": "tab:vjepa"
+}
