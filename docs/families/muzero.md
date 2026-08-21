@@ -116,24 +116,26 @@ implement.
 
 ## What we measured
 
-**It did not work at this budget.** After 2 iterations with 8 simulations
-per move, MuZero + MCTS was *worse than doing nothing*
-([findings](../findings.md#muzero-on-the-franka-arm)):
+!!! warning "A smoke run, not a result"
 
-| policy | mean distance (m) | % of gap closed |
-| --- | --- | --- |
-| no-op | 0.214 | 0.0 |
-| MuZero + MCTS | 0.505 | −135.7 |
+    The only MuZero numbers this library currently has are from the laptop
+    defaults: 2 iterations, 8 simulations per move, a 65-step buffer. At that
+    budget MuZero + MCTS ends up more than twice as far from the goal as doing
+    nothing (0.505 m against a 0.214 m no-op baseline). That records a working
+    pipeline, not a working agent, and it is not evidence about the algorithm.
+    See [Findings](../findings.md#muzero-on-the-franka-arm).
 
-`mean_search_entropy` came out at 1.386, which is \(\ln 4\), against \(\ln 15 =
-2.71\) for a uniform policy over the full action set. The search is concentrating
-on a handful of actions, and the value and policy losses (2.81 and 2.69) show
-neither head had learned much to concentrate *on*. This is a compute result, not a
-verdict on the algorithm: MuZero is the most sample-hungry of the three families,
-and 13 episodes is not a MuZero budget.
+The legible part is the **policy loss**: at 2.689 it is 99.3% of
+\(\ln 15 = 2.708\), the cross-entropy of a head that outputs a uniform
+distribution over 15 actions, so after two iterations the policy had learned
+essentially nothing. The search entropy, by contrast, says nothing at all here:
+with 8 simulations the root can visit at most 8 actions, so the statistic is
+capped by the budget rather than shaped by the model.
 
-It is documented here because a library that only shows its wins is not much use
-for deciding what to run.
+MuZero is the most sample-hungry of the three families, and it needs the search to
+be better than its own policy before its targets mean anything. If you want a
+value-based agent on this task at a budget you can afford, start with
+[TD-MPC2](tdmpc2.md).
 
 ## Example
 

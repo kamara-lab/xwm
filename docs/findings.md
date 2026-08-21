@@ -305,27 +305,51 @@ the latent dynamics were still improving when the run stopped.
 
 ## MuZero on the Franka arm
 
-2 iterations, 8 simulations per move, 13 episodes collected, 65 buffer steps, 15
-discrete actions.
+!!! warning "A smoke run, not a result"
+
+    Unlike every other section on this page, these numbers are the **laptop
+    defaults**: 2 iterations, 8 simulations per move, 13 episodes, a 65-step
+    buffer. No preset in `deploy/_shared.py` produced them. They record that the
+    pipeline runs end to end, and they are not evidence about MuZero. The GPU run
+    that would be is not in yet.
 
 | policy | mean distance (m) | % of gap closed |
 | --- | --- | --- |
 | no-op | 0.2143 | 0.0 |
 | MuZero + MCTS | 0.5051 | **−135.7** |
 
-**It did not work at this budget, and the failure is legible.** Mean search entropy
-came out at 1.386, exactly \(\ln 4\), against \(\ln 15 = 2.71\) for a uniform
-policy over the full action set, so the search is concentrating hard on four
-actions. The policy and value losses (2.689 and 2.807) say neither head had learned
-much to concentrate *on*, so it is concentrating on noise. Reward loss 0.948.
+At this budget the agent ends up more than twice as far from the goal as doing
+nothing. Sixty-five buffer steps is not a MuZero budget: the algorithm is the most
+sample-hungry of the three families, and it needs the search to be better than its
+own policy before its targets mean anything.
 
-Sixty-five buffer steps is not a MuZero budget. This is a compute result rather
-than a verdict on the algorithm: MuZero is the most sample-hungry of the three
-families, it needs the search to be better than its own policy before its targets
-mean anything, and it got neither the episodes nor the simulations to get there.
+**One diagnostic is legible and one is not, and the difference is instructive.**
+
+`mean_search_entropy` is **not** interpretable here. With 8 simulations the root
+can visit at most 8 distinct actions, so the entropy is capped at
+\(\ln 8 \approx 2.08\), nowhere near the \(\ln 15 \approx 2.71\) of a uniform
+policy over all 15 actions. The observed 1.386 is exactly \(\ln 4\), which is
+eight visits spread evenly across four actions. That is what the simulation budget
+forces, not something the search decided, so this row cannot be read as evidence
+of concentration in either direction.
+
+The **policy loss** is interpretable, and it is the one to read. At 2.689 it sits
+at 99.3% of \(\ln 15 = 2.708\), the cross-entropy of a head that outputs a uniform
+distribution over the 15 actions. So the policy head had learned essentially
+nothing after two iterations, which is exactly what two iterations should buy.
+Value loss 2.807, reward loss 0.948.
+
+!!! note "The two arms' baselines are not interchangeable"
+
+    The no-op baseline here is 0.214 m, while
+    [TD-MPC2's](#td-mpc2-on-the-franka-arm) is 0.245 m. Same task and same goal,
+    but different episode lengths, so a longer episode drifts further from the
+    start. Percentages of gap closed are comparable within a page section and not
+    across them.
 
 It is on this page because a library that only shows its wins is not much use for
-deciding what to run.
+deciding what to run, and because a smoke run labelled as one is more useful than
+a gap.
 
 ## Plot palettes
 
