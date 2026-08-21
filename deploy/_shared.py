@@ -90,6 +90,15 @@ image = (
             # capability -- which is why the loader can open the ICD but gets a
             # null vkCreateInstance back from it.
             "NVIDIA_DRIVER_CAPABILITIES": "all",
+            # JAX preallocates ~75% of device memory on first use. These
+            # experiments run JAX and Warp/MuJoCo in one process, so that pool
+            # starves the physics engine and, worse, leaves no room outside it
+            # to load a later JAX executable's CUBIN -- which is exactly how
+            # MuZero died at iteration ~20 with RESOURCE_EXHAUSTED while
+            # compiling its MCTS step. Allocating on demand costs a little
+            # speed and some fragmentation risk; running out of memory costs
+            # the whole run.
+            "XLA_PYTHON_CLIENT_PREALLOCATE": "false",
         }
     )
     # mujoco_warp is not on PyPI and is optional: FrankaEnv(solver="auto") falls

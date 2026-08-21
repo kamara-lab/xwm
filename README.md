@@ -25,11 +25,24 @@ The components are independently useful: ViT encoders over 2D patches or 3D tube
 
 ## Install
 
+Add it to your own project:
+
 ```bash
-pip install -e ".[dev]"        # core + tests
-pip install -e ".[plots]"      # figures, GIFs, tables
-pip install -e ".[newton]"     # the Franka robot environment
+uv add xwm                     # core
+uv add "xwm[plots]"            # figures, GIFs, tables
+uv add "xwm[newton]"           # the Franka robot environment
 ```
+
+Or work on it from a clone, where `uv.lock` pins the whole environment:
+
+```bash
+git clone https://github.com/Kleyt0n/xwm && cd xwm
+uv sync --extra dev                       # core + tests
+uv sync --extra dev --extra newton        # + the Franka robot environment
+uv run pytest                             # run in that environment
+```
+
+`--all-extras` is the one combination to avoid: it pulls in `render`, whose `ovrtx` ships as an sdist and wants a graphics-capable NVIDIA GPU, so it will try to build on machines that can never use it. Add `--extra render` deliberately, on a host that has one.
 
 Python ≥ 3.11, `jax`, `equinox`, `optax`, `einops`.
 
@@ -55,8 +68,7 @@ state, history = trainer.fit(batches, steps=10_000)
 
 ## Models
 
-All three share the same encoders, latent dynamics and planners. What separates
-them is **what signal trains the latent space**.
+All three share the same encoders, latent dynamics and planners. What separates them is **what signal trains the latent space**.
 
 | family | learning signal | reward? | planner |
 | --- | --- | --- | --- |
@@ -64,11 +76,7 @@ them is **what signal trains the latent space**.
 | [`tdmpc2`](xwm/families/tdmpc2) | reward + TD value | yes | MPPI |
 | [`muzero`](xwm/families/muzero) | search-improved targets | yes | MCTS |
 
-They are complementary rather than competing. JEPA needs no reward, so it can
-pretrain on passive video, abundant and unlabelled. TD-MPC2 and MuZero need
-interaction, but they learn a value function, so their planner can see past its
-own horizon. A JEPA encoder is a reasonable initialisation for either:
-`tdmpc2(encoder=pretrained)` is one argument.
+They are complementary rather than competing. JEPA needs no reward, so it can pretrain on passive video, abundant and unlabelled. TD-MPC2 and MuZero need interaction, but they learn a value function, so their planner can see past its own horizon. A JEPA encoder is a reasonable initialisation for either: `tdmpc2(encoder=pretrained)` is one argument.
 
 `xwm.families.available()` lists every registered model;
 `xwm.families.create(name, **kwargs)` builds one by name.
@@ -93,17 +101,13 @@ own horizon. A JEPA encoder is a reasonable initialisation for either:
 | `xwm.plots` | figures, GIFs, JSON/LaTeX tables |
 | `xwm.tools` | checkpointing, model summaries |
 
-`xwm.dynamics` is the centre of the library rather than an add-on: every family
-consumes a $(z, a) \rightarrow z$ model from it, and every planner consumes nothing else.
-Changing family changes how that model is *trained*, never how it is *used*.
+`xwm.dynamics` is the centre of the library rather than an add-on: every family consumes a $(z, a) \rightarrow z$ model from it, and every planner consumes nothing else. Changing family changes how that model is *trained*, never how it is *used*.
 
 ## Concepts
 
 ### What a JEPA predicts
 
-A mask sampler splits the token grid into a visible context and target blocks.
-The context encoder computes only the visible tokens, which is where the
-speedup over reconstruction comes from.
+A mask sampler splits the token grid into a visible context and target blocks. The context encoder computes only the visible tokens, which is where the speedup over reconstruction comes from.
 
 | sampler | used by | idea |
 | --- | --- | --- |
@@ -112,14 +116,11 @@ speedup over reconstruction comes from.
 | `TemporalSplit` | V-JEPA 2-AC | see a prefix, predict whole future frames |
 | `RandomMask` | baselines | uniform random tokens |
 
-Masks are batch-shared and statically shaped, so a training step compiles once.
-Sampling is combinatorial host-side work and happens in `model.prepare_batch()`,
-outside `jit`; the `Trainer` calls it for you.
+Masks are batch-shared and statically shaped, so a training step compiles once. Sampling is combinatorial host-side work and happens in `model.prepare_batch()`, outside `jit`; the `Trainer` calls it for you.
 
 ### Why it doesn't collapse
 
-Predicting a representation from a representation has a trivial solution: emit a
-constant. `collapse=` selects the countermeasure.
+Predicting a representation from a representation has a trivial solution: emit a constant. `collapse=` selects the countermeasure.
 
 | option | used by | mechanism | teacher? |
 | --- | --- | --- | --- |
@@ -128,13 +129,7 @@ constant. `collapse=` selects the countermeasure.
 | `"vicreg"` | VICReg | variance + covariance penalties | no |
 | `"none"` | — | control, for watching collapse happen | no |
 
-**SIGReg** replaces EMA teachers, stop-gradients, centering and sharpening with
-one statement: *the embedding distribution should be an isotropic Gaussian*. It
-is enforced by a sketch — for `z ~ N(0, I_D)` and any unit vector `v`, the
-projection `⟨z, v⟩` is exactly `N(0, 1)` regardless of `D` — so it draws random
-directions, projects the batch onto each, and penalises deviation from a standard
-normal. Isotropy and unit scale both fall out, the cost is linear in batch size,
-and there is one coefficient instead of a schedule.
+**SIGReg** replaces EMA teachers, stop-gradients, centering and sharpening with one statement: *the embedding distribution should be an isotropic Gaussian*. It is enforced by a sketch — for `z ~ N(0, I_D)` and any unit vector `v`, the projection `⟨z, v⟩` is exactly `N(0, 1)` regardless of `D` — so it draws random directions, projects the batch onto each, and penalises deviation from a standard normal. Isotropy and unit scale both fall out, the cost is linear in batch size, and there is one coefficient instead of a schedule.
 
 ```python
 xwm.objectives.sigreg(z, key, n_proj=256, statistic="epps_pulley")
@@ -142,9 +137,7 @@ xwm.objectives.sigreg(z, key, n_proj=256, statistic="epps_pulley")
 
 ### Planning
 
-`model.dynamics_fn()` hands a planner a plain `(z, a) -> z'` closure. Everything
-in `xwm.planning` is jittable — candidates are `vmap`ed and refinement is a
-`lax.fori_loop` — so a plan is one device call.
+`model.dynamics_fn()` hands a planner a plain `(z, a) -> z'` closure. Everything in `xwm.planning` is jittable — candidates are `vmap`ed and refinement is a `lax.fori_loop` — so a plan is one device call.
 
 ```python
 planner = xwm.planning.CEM(horizon=8, action_dim=7, n_samples=512, n_elites=64)
@@ -158,31 +151,22 @@ plan = planner.plan(key, model.dynamics_fn(), model.encode(observation), cost)
 | `GradientPlanner` | continuous | differentiates the rollout; happy to exploit model error |
 | `MCTS` | discrete | grows a tree; what MuZero uses |
 
-`run_mpc` closes the loop with replanning and warm starts. For value-based
-agents, `return_cost` scores candidates by predicted reward plus a terminal value
-bootstrap — the term that lets a horizon-3 planner act as though it saw further.
+`run_mpc` closes the loop with replanning and warm starts. For value-based agents, `return_cost` scores candidates by predicted reward plus a terminal value bootstrap — the term that lets a horizon-3 planner act as though it saw further.
 
 ### Diagnostics
 
-**The loss is not the metric.** A collapsing encoder drives its prediction loss
-*down* — it is predicting its own degenerate output.
+**The loss is not the metric.** A collapsing encoder drives its prediction loss *down* — it is predicting its own degenerate output.
 
 ```python
 xwm.metrics.collapse_report(z)
 # {'rankme': ..., 'rank_ratio': ..., 'feature_std': ..., 'mean_cosine': ...}
 ```
 
-`feature_std → 0` and `mean_cosine → 1` both mean collapse; `rankme` is the
-effective rank of the spectrum. All are reported because each misses a case the
-others catch — `rankme` is computed after centring, so a constant offset is
-invisible to it. A linear probe is *not* a collapse detector: `ridge_probe`
-standardises features, so it amplifies a nearly-dead signal back to full scale.
+`feature_std → 0` and `mean_cosine → 1` both mean collapse; `rankme` is the effective rank of the spectrum. All are reported because each misses a case the others catch — `rankme` is computed after centring, so a constant offset is invisible to it. A linear probe is *not* a collapse detector: `ridge_probe` standardises features, so it amplifies a nearly-dead signal back to full scale.
 
 ## Robotics
 
-`xwm.envs` wraps a **Franka Emika FR3** in Newton (NVIDIA Warp), observed either
-as pixels or as a 20-D proprioceptive state vector. A dense reach task supplies
-the reward the value-based families need.
+`xwm.envs` wraps a **Franka Emika FR3** in Newton (NVIDIA Warp), observed either as pixels or as a 20-D proprioceptive state vector. A dense reach task supplies the reward the value-based families need.
 
 ```python
 env = xwm.envs.FrankaEnv(xwm.envs.FrankaConfig(image_size=64))
@@ -191,13 +175,11 @@ data = xwm.envs.franka_sequences(env, 320, 8, seed=0)   # for JEPA
 env.state_observation(), env.reward(action), env.goal_distance()   # for RL
 ```
 
-`franka_sequences` returns exactly what `xwm.data.sprite_sequences` does, so it
-drops straight into any family.
+`franka_sequences` returns exactly what `xwm.data.sprite_sequences` does, so it drops straight into any family.
 
 ### Rendering
 
-Training and figures want opposite things from a renderer, so there are two
-paths. Use `xwm.envs.which_backends()` to see what is installed.
+Training and figures want opposite things from a renderer, so there are two paths. Use `xwm.envs.which_backends()` to see what is installed.
 
 | backend | speed | quality | needs |
 | --- | --- | --- | --- |
@@ -217,37 +199,13 @@ with env.high_quality_renderer(backend="usd", output_path="ep.usd") as r:
     r.add(env.state)                 # a stage to render in Omniverse or Blender
 ```
 
-`env.render` casts one ray per pixel, so `samples` renders at `samples×` and
-averages down — the only anti-aliasing the Warp raytracer has. It is the right
-tool for observations and for tidy figures, but it will not produce a
-photorealistic image: for that use `rtx`, or export a USD stage and render it
-offline. Every backend shares one camera definition (`env.camera_framing`), so
-the path-traced figure and the observations the model trains on show the same
-view from the same place.
+`env.render` casts one ray per pixel, so `samples` renders at `samples×` and averages down — the only anti-aliasing the Warp raytracer has. It is the right tool for observations and for tidy figures, but it will not produce a photorealistic image: for that use `rtx`, or export a USD stage and render it offline. Every backend shares one camera definition (`env.camera_framing`), so the path-traced figure and the observations the model trains on show the same view from the same place.
 
-Because the physics is deterministic given a seed and an action sequence, a
-path-traced figure is produced by *replaying* an episode rather than by storing
-its pixels — the render is of the same episode the numbers came from. Example 06
-writes both: `episode_frames.png` is what the encoder sees, `episode_rtx.gif`
-and `planning_episode_rtx.gif` are what the robot is doing. Set `XWM_RTX=0` to
-skip them, or `XWM_RTX_SIZE` to change the resolution.
-`deploy/app_render.py` runs every available backend on a GPU and writes the
-results side by side; `app_render.py::vulkan_probe` reports in about a minute
-whether OVRTX can get a device at all.
+Because the physics is deterministic given a seed and an action sequence, a path-traced figure is produced by *replaying* an episode rather than by storing its pixels — the render is of the same episode the numbers came from. Example 06 writes both: `episode_frames.png` is what the encoder sees, `episode_rtx.gif` and `planning_episode_rtx.gif` are what the robot is doing. Set `XWM_RTX=0` to skip them, or `XWM_RTX_SIZE` to change the resolution. `deploy/app_render.py` runs every available backend on a GPU and writes the results side by side; `app_render.py::vulkan_probe` reports in about a minute whether OVRTX can get a device at all.
 
-`rtx` needs more than an NVIDIA GPU: it needs graphics access. Many GPU cloud
-containers — Modal's among them — expose a compute-only device set (no
-`/dev/nvidia-modeset`), which satisfies CUDA but not NVIDIA's Vulkan driver, so
-OVRTX cannot create an instance there however complete the library stack is.
-Example 06 therefore picks its renderer from `which_backends()` at run time, and
-where OVRTX is unavailable it writes supersampled Warp figures plus
-`episode.usd` to path trace offline. See `docs/findings.md` for the diagnosis.
+`rtx` needs more than an NVIDIA GPU: it needs graphics access. Many GPU cloud containers — Modal's among them — expose a compute-only device set (no `/dev/nvidia-modeset`), which satisfies CUDA but not NVIDIA's Vulkan driver, so OVRTX cannot create an instance there however complete the library stack is. Example 06 therefore picks its renderer from `which_backends()` at run time, and where OVRTX is unavailable it writes supersampled Warp figures plus `episode.usd` to path trace offline. See `docs/findings.md` for the diagnosis.
 
-The two-stage V-JEPA 2-AC recipe — learn a representation from passive video,
-freeze it, learn action-conditioned dynamics in its latent space — is one call.
-Freezing is not only a compute saving: with the encoder fixed the prediction
-targets are fixed functions of the observations, so the dynamics model has
-nothing to gain from degrading the representation.
+The two-stage V-JEPA 2-AC recipe — learn a representation from passive video, freeze it, learn action-conditioned dynamics in its latent space — is one call. Freezing is not only a compute saving: with the encoder fixed the prediction targets are fixed functions of the observations, so the dynamics model has nothing to gain from degrading the representation.
 
 ```python
 model = xwm.families.jepa.action_world_model(
@@ -256,31 +214,22 @@ model = xwm.families.jepa.action_world_model(
 trainer.n_trainable == model.dynamics.n_params   # the encoder gets no optimizer state
 ```
 
-Training mixes **teacher forcing** (one step from ground-truth latents — a dense
-signal) with **rollout** (the full horizon from a single latent, the model
-consuming its own predictions — the only term that penalises compounding error).
+Training mixes **teacher forcing** (one step from ground-truth latents — a dense signal) with **rollout** (the full horizon from a single latent, the model consuming its own predictions — the only term that penalises compounding error).
 
 ## Training
 
-`Trainer` is family-agnostic: it needs only `loss`, `prepare_batch` and
-`trainable`. It owns the `jit` boundary, the EMA teacher, and the parameter
-filter, so frozen submodules never reach the optimizer.
+`Trainer` is family-agnostic: it needs only `loss`, `prepare_batch` and `trainable`. It owns the `jit` boundary, the EMA teacher, and the parameter filter, so frozen submodules never reach the optimizer.
 
 ```python
 trainer = xwm.training.Trainer(model, xwm.training.adamw(xwm.training.cosine_warmup(1e-3, 1000)))
 state, history = trainer.fit(batches, steps=1000)
 ```
 
-Batches come from `xwm.data.iter_batches` for a fixed dataset, or from
-`xwm.training.ReplayBuffer` for the reward-driven families, whose losses need
-contiguous slices of a single episode. The buffer rejects slices that straddle an
-episode boundary — training a dynamics model to predict through a reset is the
-one transition it can never get right.
+Batches come from `xwm.data.iter_batches` for a fixed dataset, or from `xwm.training.ReplayBuffer` for the reward-driven families, whose losses need contiguous slices of a single episode. The buffer rejects slices that straddle an episode boundary — training a dynamics model to predict through a reset is the one transition it can never get right.
 
 ### Keys
 
-`key=` is optional wherever a model is *built*. Omit it and the key comes from an
-ambient source; pass one and nothing ambient is touched.
+`key=` is optional wherever a model is *built*. Omit it and the key comes from an ambient source; pass one and nothing ambient is touched.
 
 ```python
 xwm.set_seed(0)
@@ -291,38 +240,13 @@ with xwm.seed(123):                                             # scoped
     model = xwm.families.jepa.ijepa(img_size=64)
 ```
 
-The source advances on every draw — it has to, or every transformer block would
-be initialised identically — so a fixed sequence of calls under a fixed seed is
-reproducible, but inserting a construction shifts everything built after it. Pass
-explicit keys for anything that must survive refactors.
+The source advances on every draw — it has to, or every transformer block would be initialised identically — so a fixed sequence of calls under a fixed seed is reproducible, but inserting a construction shifts everything built after it. Pass explicit keys for anything that must survive refactors.
 
-Only *construction* defaults. `loss`, `sigreg` and the planners still require a
-key, because those are consumed inside `jit`, where a key drawn at trace time
-would be baked in as a constant and reused for every step.
-
-## Artifacts
-
-Examples write to `examples/outputs/<name>/`: `*.png` figures, `*.gif`
-animations, `*.json` metrics at full precision, and `*.tex` tables of the same
-numbers formatted for a paper.
-
-```python
-xwm.plots.save_table(out / "results", headers, rows, caption=..., label=...)
-xwm.plots.save_metrics(out / "metrics", {"probe_r2": 0.295})
-xwm.plots.save_gif(out / "rollout.gif", [real, imagined], labels=["real", "imagined"])
-xwm.plots.save_figure(ax.figure, out / "curve.png")
-```
-
-Rounding is a display concern, so the `.tex` rounds and the `.json` does not.
-Curves use a blue/orange palette and magnitude encodings use viridis; each
-palette's series limit is measured and enforced rather than assumed
-([details](docs/findings.md#plot-palettes)).
+Only *construction* defaults. `loss`, `sigreg` and the planners still require a key, because those are consumed inside `jit`, where a key drawn at trace time would be baked in as a constant and reused for every step.
 
 ## Examples
 
-Examples 01–05 run on CPU against the synthetic world in `xwm.data`, so there is
-no dataset to download. 06–08 need the `newton` extra and download the Franka
-asset on first run.
+Examples 01–05 run on CPU against the synthetic world in `xwm.data`, so there is no dataset to download. 06–08 need the `newton` extra and download the Franka asset on first run.
 
 | example | shows |
 | --- | --- |
@@ -335,8 +259,7 @@ asset on first run.
 | `07_tdmpc2_franka.py` | TD-MPC2: learn the model *and* the value |
 | `08_muzero_franka.py` | MuZero: a model that agrees with its own search |
 
-Measured results, including the negative ones, are collected in
-**[docs/findings.md](docs/findings.md)**.
+Measured results, including the negative ones, are collected in **[docs/findings.md](docs/findings.md)**.
 
 ## Running on GPU
 
@@ -355,30 +278,21 @@ exists to isolate hardware from settings when comparing runs.
 
 ## Conventions
 
-- **Modules are unbatched.** Written for a single sample and `vmap`ed by the
-  caller, the Equinox idiom. Batch-level entry points are the methods named
-  `loss`.
-- **Shapes.** Images `(C, H, W)`, clips `(T, C, H, W)`, token sequences
-  `(N, D)`, flat latents `(D,)`, actions `(A,)`. Masks are `int32` index arrays.
+- **Modules are unbatched.** Written for a single sample and `vmap`ed by the caller, the Equinox idiom. Batch-level entry points are the methods named `loss`.
+- **Shapes.** Images `(C, H, W)`, clips `(T, C, H, W)`, token sequences `(N, D)`, flat latents `(D,)`, actions `(A,)`. Masks are `int32` index arrays.
 - **Immutability.** `model.eval_mode()` *returns* a dropout-free copy.
 
 ## Tests
 
 ```bash
-pytest
+uv run pytest
 ```
 
-The tests are written to fail on broken *behaviour*, not just broken shapes: mask
-samplers must never leak a target token into the context, dynamics must respond
-to their action input, planners must reach a reachable goal, MCTS must find a
-payoff one step away, frozen parameters must not move, and SIGReg must actually
-pull a skewed distribution toward isotropy.
+The tests are written to fail on broken *behaviour*, not just broken shapes: mask samplers must never leak a target token into the context, dynamics must respond to their action input, planners must reach a reachable goal, MCTS must find a payoff one step away, frozen parameters must not move, and SIGReg must actually pull a skewed distribution toward isotropy.
 
 ## References
 
-Every module carries a `References` block in its docstring naming the paper the
-code follows, so the citation sits beside the implementation — try
-`help(xwm.families.tdmpc2.model)`.
+Every module carries a `References` block in its docstring naming the paper the code follows, so the citation sits beside the implementation — try `help(xwm.families.tdmpc2.model)`.
 
 | model | paper |
 | --- | --- |
@@ -392,13 +306,9 @@ code follows, so the citation sits beside the implementation — try
 | Sampled MuZero | Hubert et al., ICML 2021 · [arXiv:2104.06303](https://arxiv.org/abs/2104.06303) |
 | VICReg | Bardes, Ponce & LeCun, ICLR 2022 · [arXiv:2105.04906](https://arxiv.org/abs/2105.04906) |
 
-Component-level citations — SimNorm, two-hot categorical scalars, REDQ, SAC,
-MPPI, PUCT, Epps–Pulley, RankMe, ViT/ViViT, MAE, RoPE, LayerScale, Mish — live in
-the docstrings of the modules that implement them.
+Component-level citations — SimNorm, two-hot categorical scalars, REDQ, SAC, MPPI, PUCT, Epps–Pulley, RankMe, ViT/ViViT, MAE, RoPE, LayerScale, Mish — live in the docstrings of the modules that implement them.
 
-Simulation: [Newton](https://github.com/newton-physics/newton) with a Franka
-Emika FR3; MuJoCo via `mujoco_warp` where a CUDA GPU is available, Featherstone
-otherwise.
+Simulation: [Newton](https://github.com/newton-physics/newton) with a Franka Emika FR3; MuJoCo via `mujoco_warp` where a CUDA GPU is available, Featherstone otherwise.
 
 ## License
 
