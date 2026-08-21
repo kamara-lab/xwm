@@ -396,13 +396,6 @@ Simulation: [Newton](https://github.com/newton-physics/newton) with a Franka
 Emika FR3; MuJoCo via `mujoco_warp` where a CUDA GPU is available, Featherstone
 otherwise.
 
-## Logo
-
-`assets/` holds the mark as `logo.svg` (mark + wordmark), `logo-mark.svg`
-(square, for an avatar or favicon) and `logo-mark-inverse.svg` (white on green).
-The filled cells trace an **X** — the library's initial — while the outlined
-cells are the masked patches a predictive world model has to infer.
-
 ## License
 
 Apache-2.0
