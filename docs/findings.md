@@ -284,26 +284,49 @@ objective working: the free rollout has not drifted away from the one-step signa
 
 ## TD-MPC2 on the Franka arm
 
-120 iterations, 1160 episodes collected, 23 200 buffer steps, horizon 3. Distances
-are ground truth; the agent only ever sees reward.
+Two runs at the identical `gpu` preset: 120 iterations, 1160 episodes collected,
+23 200 buffer steps, horizon 3. Distances are ground truth; the agent only ever
+sees reward.
 
-| policy | mean distance (m) | % of gap closed |
-| --- | --- | --- |
-| no-op | 0.2455 | 0.0 |
-| random | 0.4958 | −102.0 |
-| policy prior (no planning) | 0.8942 | −264.3 |
-| **TD-MPC2 + MPPI** | **0.2031** | **+17.2** |
+| policy | run A (m) | run A | run B (m) | run B |
+| --- | --- | --- | --- | --- |
+| no-op | 0.2455 | 0.0 | 0.2455 | 0.0 |
+| random | 0.4958 | −102.0 | 0.4958 | −102.0 |
+| policy prior (no planning) | 0.8942 | −264.3 | 0.8846 | −260.3 |
+| **TD-MPC2 + MPPI** | **0.2031** | **+17.2** | **0.4173** | **−70.0** |
 
-**The policy prior alone is far worse than doing nothing**, worse even than random
-actions, while the same model with MPPI in front of it is the only policy on the
-page that beats no-op. That gap is the entire argument for planning in this family:
-the prior is a *proposal distribution* for the planner, and at this budget it is not
-a controller. Reading its −264% as a failed agent would be a misreading of what it
-is for.
+**The sign of the headline result does not reproduce.** Same preset, same code: the
+planner closed 17% of the gap in one run and finished 70% *worse* than doing
+nothing in the other. That is not a spread around an effect, it is both signs of
+one, so neither number can be quoted as the result. The defensible claim is that
+TD-MPC2 at this budget on this task lands somewhere between clearly better and
+clearly worse than not moving, and that a single run tells you nothing about which.
 
-Losses at the end: consistency 1.741, reward 0.973, value 0.350. Consistency is the
-dominant term (weighted 20× against 0.1) and is still much the largest, which says
-the latent dynamics were still improving when the run stopped.
+The baselines locate the variance. `no-op` and `random` are identical to four
+decimals across both runs, because both are seeded and model-independent, so every
+bit of the movement is in what was learned rather than in how it was scored.
+
+**What does replicate is the planner-against-prior gap.** Planning beats the policy
+prior by a factor of 2.1 in the worse run and 4.4 in the better one, and the prior
+alone is worse than random actions in both. So *the prior is a proposal
+distribution and not a controller* is a stable finding; *the planner beats doing
+nothing* is not. Reading the prior's −260% as a failed agent would still be a
+misreading of what it is for.
+
+**The training trace favours the negative reading over an unlucky evaluation.** In
+run B the consistency loss rose monotonically, 0.87 at iteration 0 to 1.68 at
+iteration 115, while the evaluation distance oscillated between 0.34 m and 1.11 m
+with no trend; both runs end with it near 1.7 (1.741 and 1.705). The term whose job
+is to make the latent dynamics predictive got worse throughout training, so MPPI
+was planning through a model that was degrading under it. With dynamics that poor,
+whether search helps or hurts is not pinned down by the configuration, which is
+what a sign flip between identical runs looks like. Value loss is flat at 0.350 in
+both; reward loss 0.973 and 1.006.
+
+That last point corrects a reading in an earlier version of this page, which took
+the consistency term still being the largest as a sign that the dynamics were
+"still improving". A large loss under a 20× weight says the term dominates the
+gradient, not that it is on its way down. The trace says it was going up.
 
 ## MuZero on the Franka arm
 
