@@ -53,10 +53,10 @@ docs = [
 ]
 
 [project.urls]
-Homepage = "https://kleyt0n.github.io/xwm/"
-Documentation = "https://kleyt0n.github.io/xwm/"
-Repository = "https://github.com/Kleyt0n/xwm"
-Issues = "https://github.com/Kleyt0n/xwm/issues"
+Homepage = "https://kamara-lab.github.io/xwm/"
+Documentation = "https://kamara-lab.github.io/xwm/"
+Repository = "https://github.com/kamara-lab/xwm"
+Issues = "https://github.com/kamara-lab/xwm/issues"
 
 [build-system]
 requires = ["hatchling"]

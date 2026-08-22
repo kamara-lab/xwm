@@ -36,7 +36,7 @@ uv add "xwm[newton]"           # the Franka robot environment
 Or work on it from a clone, where `uv.lock` pins the whole environment:
 
 ```bash
-git clone https://github.com/Kleyt0n/xwm && cd xwm
+git clone https://github.com/kamara-lab/xwm && cd xwm
 uv sync --extra dev                       # core + tests
 uv sync --extra dev --extra newton        # + the Franka robot environment
 uv run pytest                             # run in that environment
@@ -312,8 +312,8 @@ Simulation: [Newton](https://github.com/newton-physics/newton) with a Franka Emi
 
 ## Contributors
 
-<a href="https://github.com/kleyt0n/xwm/graphs/contributors">
-  <img alt="Contributors to surface" src="https://contrib.rocks/image?repo=kleyt0n/xwm">
+<a href="https://github.com/kamara-lab/xwm/graphs/contributors">
+  <img alt="Contributors to surface" src="https://contrib.rocks/image?repo=kamara-lab/xwm">
 </a>
 
 ## Supported by

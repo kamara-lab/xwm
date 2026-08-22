@@ -1,9 +1,9 @@
 site_name: xwm
 site_description: Action-conditioned world models for robotics, in JAX.
-site_url: https://kleyt0n.github.io/xwm/
+site_url: https://kamara-lab.github.io/xwm/
 site_author: Kleyton Costa
-repo_url: https://github.com/Kleyt0n/xwm
-repo_name: Kleyt0n/xwm
+repo_url: https://github.com/kamara-lab/xwm
+repo_name: kamara-lab/xwm
 edit_uri: edit/main/docs/
 copyright: Apache-2.0
 
@@ -67,7 +67,7 @@ extra_javascript:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/Kleyt0n/xwm
+      link: https://github.com/kamara-lab/xwm
       name: xwm on GitHub
     - icon: fontawesome/brands/python
       link: https://pypi.org/project/xwm/

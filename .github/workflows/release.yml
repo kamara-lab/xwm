@@ -6,7 +6,7 @@
 #
 # One-time setup on PyPI (Trusted Publishing, so there is no API token to leak):
 #   pypi.org -> your project -> Publishing -> Add a pending publisher
-#     Owner: Kleyt0n     Repository: xwm
+#     Owner: kamara-lab     Repository: xwm
 #     Workflow: release.yml     Environment: pypi
 # Then create a `pypi` environment under Settings -> Environments, and require
 # whatever reviewers you want on it. If you would rather use a token, replace the

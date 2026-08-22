@@ -178,7 +178,7 @@ nothing else. Changing family changes how that model is *trained*, never how it 
 
 ## Project
 
-- **Source**: [github.com/Kleyt0n/xwm](https://github.com/Kleyt0n/xwm)
+- **Source**: [github.com/kamara-lab/xwm](https://github.com/kamara-lab/xwm)
 - **Package**: [pypi.org/project/xwm](https://pypi.org/project/xwm/)
 - **License**: Apache-2.0
 - **Citations**: [one per module](reference/index.md#citations), sitting beside the

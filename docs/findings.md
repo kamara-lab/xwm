@@ -1,8 +1,10 @@
 # Findings
 
 Measured results and the diagnoses behind them. Numbers here come from runs whose
-settings are recorded in `deploy/_shared.py`; where a claim was overturned by a
-later run, both are kept.
+settings are recorded in `deploy/_shared.py`, unless a section says otherwise —
+at least one records a smoke run at the laptop defaults, and says so, because a
+labelled negative result beats a quiet omission. Where a claim was overturned by
+a later run, both are kept.
 
 ## OVRTX path tracing does not run on a compute-only GPU container
 

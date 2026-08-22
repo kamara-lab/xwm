@@ -9,7 +9,7 @@ pip install xwm
 ## From source
 
 ```bash
-git clone https://github.com/Kleyt0n/xwm
+git clone https://github.com/kamara-lab/xwm
 cd xwm
 pip install -e ".[dev]"
 ```
