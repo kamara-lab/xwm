@@ -310,6 +310,16 @@ Component-level citations — SimNorm, two-hot categorical scalars, REDQ, SAC, M
 
 Simulation: [Newton](https://github.com/newton-physics/newton) with a Franka Emika FR3; MuJoCo via `mujoco_warp` where a CUDA GPU is available, Featherstone otherwise.
 
+## Contributors
+
+<a href="https://github.com/kleyt0n/xwm/graphs/contributors">
+  <img alt="Contributors to surface" src="https://contrib.rocks/image?repo=kleyt0n/xwm">
+</a>
+
+## Supported by
+
+Get in touch kleyton.vsc@gmail.com
+
 ## License
 
 Apache-2.0
