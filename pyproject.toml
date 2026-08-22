@@ -65,6 +65,15 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["xwm"]
 
+# Without this, hatchling sweeps the whole working tree into the sdist: the 20 MB
+# of generated GIFs and USD stages under examples/outputs, the LaTeX intermediates
+# beside the TikZ diagram, and anything untracked that happens to be lying around.
+# A source distribution needs the package, the tests that specify its behaviour,
+# and the example scripts, so it lists those rather than excluding the rest.
+[tool.hatch.build.targets.sdist]
+only-include = ["xwm", "tests", "examples", "README.md", "pyproject.toml"]
+exclude = ["examples/outputs"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 filterwarnings = ["ignore::DeprecationWarning"]
