@@ -20,7 +20,7 @@
 The components are independently useful: ViT encoders over 2D patches or 3D tubelets and MLP encoders over state vectors; transformer or residual-MLP dynamics; categorical reward and value heads, pessimistic Q-ensembles, squashed-Gaussian policies; latent-prediction, SIGReg, VICReg, InfoNCE and TD objectives; CEM, MPPI, gradient and PUCT-MCTS planners; a family-agnostic trainer with EMA targets, parameter freezing and a trajectory replay buffer.
 
 <p align="center">
-  <img src="docs/assets/world-model-dark.svg" alt="Encoder, latent dynamics and heads" width="720">
+  <img src="https://raw.githubusercontent.com/kamara-lab/xwm/refs/heads/main/docs/assets/world-model-dark.svg" alt="Encoder, latent dynamics and heads" width="720">
 </p>
 
 ## Install
