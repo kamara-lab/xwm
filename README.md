@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="xwm" width="300">
+  <img src="https://raw.githubusercontent.com/kamara-lab/xwm/refs/heads/main/assets/logo.svg" alt="xwm" width="300">
 </p>
 
 <p align="center"><strong>Action-conditioned world models for robotics.</strong></p>
