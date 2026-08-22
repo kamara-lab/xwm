@@ -133,9 +133,12 @@ with 8 simulations the root can visit at most 8 actions, so the statistic is
 capped by the budget rather than shaped by the model.
 
 MuZero is the most sample-hungry of the three families, and it needs the search to
-be better than its own policy before its targets mean anything. If you want a
-value-based agent on this task at a budget you can afford, start with
-[TD-MPC2](tdmpc2.md).
+be better than its own policy before its targets mean anything.
+
+Do not read across to [TD-MPC2](tdmpc2.md) as the safe alternative either: its own
+result on this task flips sign between identical runs, so neither value-based
+family currently has a reproducible number here. Both are documented in
+[Findings](../findings.md) with what they actually produced.
 
 ## Example
 

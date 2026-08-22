@@ -33,6 +33,13 @@ They are complementary rather than competing:
 The dotted arrows are real: a JEPA encoder is a reasonable initialisation for
 either value-based family, and it is one argument.
 
+!!! note "What they have actually achieved on the Franka arm"
+
+    Design fit is not evidence. On this task the JEPA pipeline closes 10–30% of the
+    distance to the goal, TD-MPC2's result flips sign between identical runs, and
+    MuZero has only a smoke run so far. [Findings](../findings.md) carries the
+    measurements, including the negative ones.
+
 ```python
 pretrained = trained_jepa.encoder
 

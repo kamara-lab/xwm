@@ -108,25 +108,44 @@ own reward and value heads. Candidates are scored by discounted predicted reward
 **plus a terminal value bootstrap**, the term that lets a horizon-3 planner act
 as though it saw further.
 
-On the Franka reach task after 120 iterations
+Two runs on the Franka reach task at the identical preset, 120 iterations each
 ([findings](../findings.md#td-mpc2-on-the-franka-arm)):
 
-| policy | mean distance (m) | % of gap closed |
-| --- | --- | --- |
-| no-op | 0.245 | 0.0 |
-| random | 0.496 | −102.0 |
-| policy prior (no planning) | 0.894 | −264.3 |
-| **TD-MPC2 + MPPI** | **0.203** | **+17.2** |
+| policy | run A (m) | run A | run B (m) | run B |
+| --- | --- | --- | --- | --- |
+| no-op | 0.245 | 0.0 | 0.245 | 0.0 |
+| random | 0.496 | −102.0 | 0.496 | −102.0 |
+| policy prior (no planning) | 0.894 | −264.3 | 0.885 | −260.3 |
+| **TD-MPC2 + MPPI** | **0.203** | **+17.2** | **0.417** | **−70.0** |
 
-The policy prior alone is *far worse than doing nothing* at this budget, while the
-same model with a planner in front of it is the only policy that beats no-op. The
-prior is a proposal distribution, not a controller, which is exactly the role
-TD-MPC2 assigns it.
+!!! warning "The headline result does not reproduce"
+
+    Identical settings gave +17% in one run and −70% in the other, so the sign of
+    the effect is not determined by the configuration. Do not quote either number
+    as the result. In run B the consistency loss rose throughout training, from
+    0.87 to 1.68, so the planner was working through latent dynamics that were
+    degrading under the very term meant to sharpen them.
+
+What survives both runs is the **planner-against-prior** gap: planning is 2.1 to
+4.4 times closer to the goal than the policy prior alone, and the prior is worse
+than random actions either way. The prior is a proposal distribution, not a
+controller, which is exactly the role TD-MPC2 assigns it. Whether the planner on
+top of it beats doing nothing is, at this budget, a coin flip.
 
 <figure markdown="span">
   ![TD-MPC2 policy comparison](../outputs/07_tdmpc2_franka/policy_comparison.png){ width="620" }
   <figcaption>
-    Distances are ground truth. The agent only ever sees reward.
+    Run B. Distances are ground truth; the agent only ever sees reward.
+  </figcaption>
+</figure>
+
+<figure markdown="1">
+  [![Eight frames of a TD-MPC2 planning episode](../outputs/07_tdmpc2_franka/episode_frames.png){ width="700" }](../outputs/07_tdmpc2_franka/episode_frames.png)
+  <figcaption markdown="span">
+    One planning episode, sampled evenly across its 21 steps rather than at the
+    start, so it shows the whole motion. Rendered at 768 px per frame, so
+    [open it full size](../outputs/07_tdmpc2_franka/episode_frames.png) to see the
+    arm extend.
   </figcaption>
 </figure>
 
