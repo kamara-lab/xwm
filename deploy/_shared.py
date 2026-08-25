@@ -117,6 +117,17 @@ image = (
     .env({"WARP_CACHE_PATH": "/tmp/warp-cache", "MPLBACKEND": "Agg"})
     # Modal 1.x does not auto-mount local Python modules, so this module has to
     # ship itself: the app files import it for `execute`.
+    # The `data` extra, for xwm.datasets. Its own layer rather than folded into
+    # the big pip_install above, so adding it leaves every earlier layer -- the
+    # 1.7 GB OVRTX build included -- cached. It has to come *before* the
+    # add_local_* calls: Modal refuses a build step after them, because those are
+    # mounted at container start rather than baked into a layer.
+    .pip_install(
+        "huggingface-hub>=0.26",
+        "pyarrow>=17",
+        "av>=12",
+        "h5py>=3.11",
+    )
     .add_local_python_source("_shared")
     .add_local_dir(ROOT / "xwm", remote_path="/root/xwm")
     .add_local_dir(
@@ -166,6 +177,38 @@ PRESETS: dict[str, dict[str, str]] = {
         "SIMULATIONS": "64",
         "EVAL_EPISODES": "24",
     },
+    # 09 only. Push-T records at 96x96, so IMG_SIZE follows the data rather than
+    # the shared 128: upsampling a 96px recording to 128 adds tokens and no
+    # information. 96/12 = 8, so the token count matches the shared preset's
+    # 128/16. REG_WEIGHT is the open question from docs/findings.md -- 20 (tuned
+    # on sprites) leaves the recorded encoder collapsed, and this is the run that
+    # tests whether a higher weight plus a longer stage 1 fixes it.
+    "gpu-recorded": {
+        "IMG_SIZE": "96",
+        "PATCH_SIZE": "12",
+        "CLIP_LEN": "9",
+        "EPISODES": "206",
+        "PRETRAIN_STEPS": "6000",
+        "DYNAMICS_STEPS": "6000",
+        # Stage 2 unrolls the dynamics eight steps over a 64-token grid and keeps
+        # every step's activations for the backward pass, so batch is the wrong
+        # place to spend an A10: BATCH=64 asked XLA for a single 12 GiB
+        # allocation and died. The GPU goes into depth and steps instead -- a
+        # 384-wide depth-6 encoder and predictor, 6000 steps of each stage,
+        # against the laptop run's 128-wide depth-4 and 300.
+        "BATCH": "16",
+        "ENCODE_BATCH": "64",
+        "REG_WEIGHT": "100",
+        "ENC_DEPTH": "6",
+        "ENC_DIM": "384",
+        "ENC_HEADS": "6",
+        "DYN_DEPTH": "6",
+        "DYN_DIM": "384",
+        "DYN_HEADS": "6",
+        "FIGURE_SIZE": "96",
+        "FIGURE_FRAMES": "64",
+        "FIGURE_CANDIDATES": "24",
+    },
     "xl": {
         "IMG_SIZE": "224",
         "PATCH_SIZE": "16",
@@ -213,6 +256,7 @@ EXPERIMENTS = {
     "franka": "06_franka_newton",
     "tdmpc2": "07_tdmpc2_franka",
     "muzero": "08_muzero_franka",
+    "recorded": "09_recorded_data",
 }
 
 

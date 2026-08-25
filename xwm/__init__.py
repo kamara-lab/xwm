@@ -21,7 +21,8 @@ The library separates *generic machinery* from *families* from *use*:
 :mod:`xwm.planning`           CEM, MPPI, gradient, MPC, MCTS
 :mod:`xwm.training`           one trainer, schedules, replay buffer
 :mod:`xwm.envs`               simulated robots (a Franka arm in Newton)
-:mod:`xwm.data`               batch streams and a synthetic controllable world
+:mod:`xwm.data`               batch streams and synthetic controllable worlds
+:mod:`xwm.datasets`           readers for recorded corpora (DROID, LIBERO, OGBench)
 :mod:`xwm.metrics`            probes and collapse diagnostics
 :mod:`xwm.plots`              figures, GIFs, JSON/LaTeX tables
 :mod:`xwm.tools`              checkpointing and model summaries
@@ -52,6 +53,7 @@ Quick start
 from . import (
     core,
     data,
+    datasets,
     dynamics,
     encoders,
     envs,
@@ -75,6 +77,7 @@ __version__ = "0.1.0"
 __all__ = [
     "JEPA",
     "MaskBatch",
+    "datasets",
     "Module",
     "WorldModel",
     "__version__",

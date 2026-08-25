@@ -1,13 +1,13 @@
 {
-  "iterations": 2,
+  "iterations": 120,
   "n_actions": 15,
-  "simulations": 8,
-  "episodes_collected": 13,
-  "buffer_steps": 65,
-  "final_distance": 0.5051026244958242,
-  "noop_distance": 0.2142609010140101,
-  "mean_search_entropy": 1.3862943649291992,
-  "loss_reward": 0.9477591514587402,
-  "loss_value": 2.806765079498291,
-  "loss_policy": 2.688640594482422
+  "simulations": 64,
+  "episodes_collected": 1160,
+  "buffer_steps": 23200,
+  "final_distance": 0.14360293156156936,
+  "noop_distance": 0.24548424842456976,
+  "mean_search_entropy": 1.0623668432235718,
+  "loss_reward": 0.39733147621154785,
+  "loss_value": 0.7897638082504272,
+  "loss_policy": 2.2362539768218994
 }

@@ -8,7 +8,7 @@
   <a href="https://pypi.org/project/xwm/"><img alt="PyPI version" src="https://img.shields.io/pypi/v/xwm?style=flat-square&color=059669&labelColor=ffffff"></a>
   <a href="https://www.python.org/downloads/"><img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-059669?style=flat-square&labelColor=ffffff"></a>
   <a href="https://github.com/jax-ml/jax"><img alt="JAX" src="https://img.shields.io/badge/built%20on-JAX%20%20-059669?style=flat-square&labelColor=ffffff"></a>
-  <a href="#tests"><img alt="Tests" src="https://img.shields.io/badge/tests-323%20passing-059669?style=flat-square&labelColor=ffffff"></a>
+  <a href="#tests"><img alt="Tests" src="https://img.shields.io/badge/tests-388%20passing-059669?style=flat-square&labelColor=ffffff"></a>
   <a href="https://docs.astral.sh/ruff/"><img alt="Ruff" src="https://img.shields.io/badge/lint-ruff-059669?style=flat-square&labelColor=ffffff"></a>
   <a href="#license"><img alt="Apache 2.0" src="https://img.shields.io/badge/license-Apache--2.0-059669?style=flat-square&labelColor=ffffff"></a>
 </p>
@@ -31,6 +31,7 @@ Add it to your own project:
 uv add xwm                     # core
 uv add "xwm[plots]"            # figures, GIFs, tables
 uv add "xwm[newton]"           # the Franka robot environment
+uv add "xwm[data]"             # recorded datasets: DROID, LIBERO, OGBench, OXE
 ```
 
 Or work on it from a clone, where `uv.lock` pins the whole environment:
@@ -177,6 +178,30 @@ env.state_observation(), env.reward(action), env.goal_distance()   # for RL
 
 `franka_sequences` returns exactly what `xwm.data.sprite_sequences` does, so it drops straight into any family.
 
+Two synthetic worlds cover the same ground on CPU, without a simulator. `xwm.data.PushWorld` is planar pushing: the puck moves only when the pusher touches it, which puts a hinge in the dynamics that `SpriteWorld`'s linear ones cannot have, and it carries a dense reward. `xwm.data.MazeWorld` is sparse-reward navigation through corridors, shaped after OGBench's `antmaze` navigate tasks. Both were tuned by measuring the task rather than by eye: on `PushWorld`, a single sequence of random actions solves 3% of starts and the best of 80 solves 94%, which is the gap a planner has to exploit.
+
+### Recorded datasets
+
+`xwm.datasets` reads the corpora the field benchmarks on, in the four formats they come in, and returns exactly the field layout `sprite_sequences` does.
+
+```python
+xwm.datasets.describe("lerobot/droid-100")               # size, episodes, licence, citation
+data = xwm.datasets.create("libero/10", length=16, limit=20, resize=64)
+buffer = xwm.datasets.to_replay_buffer(xwm.datasets.create("robomimic/lift", length=32))
+```
+
+| reader | corpora | needs |
+| --- | --- | --- |
+| `lerobot` | DROID, LIBERO, Push-T, and the Open X-Embodiment mirrors (RT-1, Bridge V2, Language-Table, TACO-Play, Berkeley UR5) | `xwm[data]` |
+| `offline` | OGBench — 2-D mazes to a 69-D humanoid, state and pixels | nothing at all |
+| `hdf5` | LIBERO (including the 90-task suite, which has no LeRobot conversion) and RoboMimic, in their native HDF5 | `xwm[data]` |
+| `minari` | D4RL through its successor — pointmaze, antmaze, halfcheetah, FrankaKitchen | `minari` |
+| `rlds` | Open X-Embodiment as published | `tensorflow-datasets` |
+
+Mixtures are what OXE is actually for, so `xwm.datasets.mixture(xwm.datasets.OXE_MIXTURE, action_dim=7, resize=64)` interleaves several members by weight, zero-padding narrower action spaces to a common width; `xwm.datasets.stream(name)` is the same registry access without materialising anything.
+
+Every registered source was resolved against the live host, and the episode counts come from the datasets' own metadata rather than from their papers. The one thing to know before using it: recorded formats store one action per frame, including a last one whose result was never recorded, and `xwm` needs `T - 1` actions for `T` frames. The readers drop it and the contract check refuses an episode that did not — a silent one-step shift looks exactly like underfitting.
+
 ### Rendering
 
 Training and figures want opposite things from a renderer, so there are two paths. Use `xwm.envs.which_backends()` to see what is installed.
@@ -225,7 +250,7 @@ trainer = xwm.training.Trainer(model, xwm.training.adamw(xwm.training.cosine_war
 state, history = trainer.fit(batches, steps=1000)
 ```
 
-Batches come from `xwm.data.iter_batches` for a fixed dataset, or from `xwm.training.ReplayBuffer` for the reward-driven families, whose losses need contiguous slices of a single episode. The buffer rejects slices that straddle an episode boundary — training a dynamics model to predict through a reset is the one transition it can never get right.
+Batches come from `xwm.data.iter_batches` for a fixed dataset, or from `xwm.training.ReplayBuffer` for the reward-driven families, whose losses need contiguous slices of a single episode. The buffer rejects slices that straddle an episode boundary — training a dynamics model to predict through a reset is the one transition it can never get right. `xwm.datasets.to_replay_buffer` fills it from a recorded corpus, one clip per episode.
 
 ### Keys
 
@@ -246,7 +271,7 @@ Only *construction* defaults. `loss`, `sigreg` and the planners still require a 
 
 ## Examples
 
-Examples 01–05 run on CPU against the synthetic world in `xwm.data`, so there is no dataset to download. 06–08 need the `newton` extra and download the Franka asset on first run.
+Examples 01–05 run on CPU against the synthetic worlds in `xwm.data`, so there is no dataset to download. 06–08 need the `newton` extra and download the Franka asset on first run. 09 needs the `data` extra and downloads ~30 MB of recorded robot data.
 
 | example | shows |
 | --- | --- |
@@ -258,16 +283,17 @@ Examples 01–05 run on CPU against the synthetic world in `xwm.data`, so there 
 | `06_franka_newton.py` | the same pipeline on a Franka arm |
 | `07_tdmpc2_franka.py` | TD-MPC2: learn the model *and* the value |
 | `08_muzero_franka.py` | MuZero: a model that agrees with its own search |
+| `09_recorded_data.py` | a recorded dataset, against the synthetic world built to abstract it |
 
 Measured results, including the negative ones, are collected in **[docs/findings.md](docs/findings.md)**.
 
 ## Running on GPU
 
-Each experiment is its own [Modal](https://modal.com) app, so the eight can run
+Each experiment is its own [Modal](https://modal.com) app, so the nine can run
 concurrently on separate GPUs and be started, watched and stopped independently.
 
 ```bash
-./deploy/run_all.sh                            # all eight, gpu preset
+./deploy/run_all.sh                            # all nine, gpu preset
 modal run deploy/app_tdmpc2.py --preset xl     # one, at higher fidelity
 ```
 
@@ -288,7 +314,9 @@ exists to isolate hardware from settings when comparing runs.
 uv run pytest
 ```
 
-The tests are written to fail on broken *behaviour*, not just broken shapes: mask samplers must never leak a target token into the context, dynamics must respond to their action input, planners must reach a reachable goal, MCTS must find a payoff one step away, frozen parameters must not move, and SIGReg must actually pull a skewed distribution toward isotropy.
+The tests are written to fail on broken *behaviour*, not just broken shapes: mask samplers must never leak a target token into the context, dynamics must respond to their action input, planners must reach a reachable goal, MCTS must find a payoff one step away, frozen parameters must not move, SIGReg must actually pull a skewed distribution toward isotropy, and a dataset reader must drop the final recorded action rather than shift a whole corpus by one step.
+
+Two groups are gated. The Franka tests need the `newton` extra and skip without it. The dataset tests that download run only under `XWM_DATASET_TESTS=1`; the rest of them exercise every reader against fixtures written into `tmp_path` in the real on-disk formats — a real parquet shard, a real mp4, a real HDF5 — because a reader tested against a mock of a format is a reader tested against a belief about the format.
 
 ## References
 

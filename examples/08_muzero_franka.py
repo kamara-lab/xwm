@@ -46,16 +46,29 @@ EVAL_EPISODES = setting("EVAL_EPISODES", 12)
 TEMPERATURE = setting("TEMPERATURE", 1.0)
 
 
-def search_fn(model, mcts, *, key):
-    """A jitted MCTS call over the model's own recurrent/predict functions."""
+# Jitted once, at module level, with the model passed in as an argument rather
+# than closed over. A filter_jit wrapper built per episode closes over the
+# weights, which makes them compile-time constants baked into that executable;
+# 8 episodes x 120 iterations then leaves ~1900 executables resident, each
+# carrying its own copy of the model, and the run dies of device memory
+# exhaustion around iteration 95. See docs/findings.md.
+@eqx.filter_jit
+def _represent(model, observation):
+    return model.represent(observation)
+
+
+@eqx.filter_jit
+def _search(model, mcts, key, latent, noise: bool):
     recurrent, predict = model.search_fns()
+    return mcts.search(key, latent, recurrent, predict, add_noise=noise)
 
-    @eqx.filter_jit
-    def run(k, latent, noise: bool):
-        return mcts.search(k, latent, recurrent, predict, add_noise=noise)
 
-    encode = eqx.filter_jit(model.represent)
-    return encode, run
+def search_fn(model, mcts, *, key):
+    """An ``(encode, search)`` pair bound to ``model``, sharing one executable."""
+    return (
+        lambda observation: _represent(model, jnp.asarray(observation)),
+        lambda k, latent, noise: _search(model, mcts, k, latent, noise),
+    )
 
 
 def self_play(env, model, mcts, actions_table, *, key, seed, explore=True):

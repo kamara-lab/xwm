@@ -7,15 +7,15 @@
   "rows": [
     {
       "policy": "no-op",
-      "mean distance (m)": 0.2142609010140101,
+      "mean distance (m)": 0.24548424842456976,
       "% of gap closed": 0.0
     },
     {
       "policy": "MuZero + MCTS",
-      "mean distance (m)": 0.5051026244958242,
-      "% of gap closed": -135.7418558894217
+      "mean distance (m)": 0.14360293156156936,
+      "% of gap closed": 41.502180900338125
     }
   ],
-  "caption": "MuZero on the Franka reach task, 15 discrete actions, 8 simulations per move, after 2 iterations.",
+  "caption": "MuZero on the Franka reach task, 15 discrete actions, 64 simulations per move, after 120 iterations.",
   "label": "tab:muzero-franka"
 }

@@ -71,6 +71,11 @@ jobs:
       # The `newton` extra is deliberately absent: it pulls in Warp and downloads
       # the Franka asset on first use. tests/test_envs.py `importorskip`s it, so
       # the robot tests skip here and run on a machine that has a GPU.
+      #
+      # The dataset format libraries *are* in `dev`, because the readers in
+      # xwm.datasets are tested against fixtures written into tmp_path in the
+      # real formats. Nothing here touches the network: the tests that download
+      # are gated on XWM_DATASET_TESTS=1 and never run in CI.
       - name: Install
         run: pip install -e ".[dev]"
 
@@ -81,6 +86,7 @@ jobs:
         run: |
           python -c "import xwm; print(xwm.__version__); print(xwm.families.available())"
           python -c "import xwm; print(xwm.envs.which_backends())"
+          python -c "import xwm; print(len(xwm.datasets.available()), 'datasets'); print(xwm.datasets.which_readers())"
 
   docs:
     name: Docs build

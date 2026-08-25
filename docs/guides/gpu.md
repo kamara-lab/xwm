@@ -1,12 +1,13 @@
 # Running on GPU
 
-Each experiment is its own [Modal](https://modal.com) app, so the eight can run
+Each experiment is its own [Modal](https://modal.com) app, so the nine can run
 concurrently on separate GPUs and be started, watched and stopped independently.
 
 ```bash
-./deploy/run_all.sh                            # all eight, gpu preset
-./deploy/run_all.sh xl                         # all eight, higher fidelity
+./deploy/run_all.sh                            # all nine, gpu preset
+./deploy/run_all.sh xl                         # all nine, higher fidelity
 modal run deploy/app_tdmpc2.py --preset xl     # just one
+modal run deploy/app_recorded.py               # recorded data, gpu-recorded preset
 ```
 
 Logs land in `deploy/logs/<experiment>.log`. One app per experiment means they get
@@ -23,10 +24,27 @@ than a laptop version and a cluster version.
 | `cpu-parity` | the laptop settings, on GPU hardware |
 | `gpu` | the default: 128 px, 4000 steps, ViT depth 6 / width 384, 120 RL iterations |
 | `xl` | 224 px, 12 000 steps, ViT depth 12, 400 RL iterations, 1024 px path tracing |
+| `gpu-recorded` | example 09 only: 96 px, 6000 steps per stage, all 206 Push-T episodes, `reg_weight` 100 |
 
 `cpu-parity` exists to **isolate hardware from settings**. If a GPU run disagrees
 with a laptop run, `cpu-parity` tells you whether the hardware or the configuration
 is responsible. Without it, every comparison confounds the two.
+
+`gpu-recorded` is separate from `gpu` rather than folded into it because
+[example 09](examples.md)'s input resolution is fixed by its data: Push-T records
+at 96×96, and upsampling that to the shared preset's 128 px buys tokens and no
+information. It also runs a smaller batch than `gpu`, which is not a typo — see
+[Findings](../findings.md#xla_python_client_preallocatefalse-does-not-make-a-gpu-bigger)
+for the 12 GiB allocation that established it.
+
+!!! note "The dataset cache"
+
+    `app_recorded.py` is the only app whose data comes off the network, so it
+    mounts a second volume, `xwm-dataset-cache`, at `/data` with `XWM_DATA_HOME`
+    and `HF_HOME` pointed into it. Without it every run re-downloads, and a run
+    on DROID or LIBERO would re-download tens of gigabytes. It is deliberately
+    not the artifacts volume: `collect_files` globs that one, so a cached dataset
+    in there would come back down with the figures every time.
 
 ## How the overrides reach the examples
 

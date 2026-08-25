@@ -1,0 +1,27 @@
+\begin{table}[t]
+\centering
+\begin{tabular}{lrrrr}
+\toprule
+source & horizon & model L1 & no-op L1 & ratio \\
+\midrule
+recorded (lerobot/pusht) & 1 & 0.5945 & 0.6851 & 0.8677 \\
+recorded (lerobot/pusht) & 2 & 0.6204 & 0.7559 & 0.8207 \\
+recorded (lerobot/pusht) & 3 & 0.6304 & 0.7848 & 0.8033 \\
+recorded (lerobot/pusht) & 4 & 0.6350 & 0.7994 & 0.7943 \\
+recorded (lerobot/pusht) & 5 & 0.6398 & 0.8074 & 0.7924 \\
+recorded (lerobot/pusht) & 6 & 0.6415 & 0.8186 & 0.7836 \\
+recorded (lerobot/pusht) & 7 & 0.6470 & 0.8267 & 0.7826 \\
+recorded (lerobot/pusht) & 8 & 0.6501 & 0.8327 & 0.7807 \\
+synthetic (PushWorld) & 1 & 0.7342 & 0.9375 & 0.7831 \\
+synthetic (PushWorld) & 2 & 0.6999 & 0.9377 & 0.7464 \\
+synthetic (PushWorld) & 3 & 0.6871 & 0.9404 & 0.7307 \\
+synthetic (PushWorld) & 4 & 0.6911 & 0.9480 & 0.7289 \\
+synthetic (PushWorld) & 5 & 0.6877 & 0.9359 & 0.7348 \\
+synthetic (PushWorld) & 6 & 0.6862 & 0.9357 & 0.7334 \\
+synthetic (PushWorld) & 7 & 0.6847 & 0.9440 & 0.7253 \\
+synthetic (PushWorld) & 8 & 0.6928 & 0.9349 & 0.7410 \\
+\bottomrule
+\end{tabular}
+\caption{Held-out latent L1 of a free rollout on 206 episodes of lerobot/pusht and on a matched sample of xwm.data.PushWorld. Ratio below 1 beats assuming nothing changes.}
+\label{tab:recorded}
+\end{table}

@@ -59,7 +59,13 @@ def effective_rank_ratio(z: Array) -> Array:
 
 
 def feature_std(z: Array) -> Array:
-    """Mean per-dimension standard deviation. Near zero means collapse."""
+    """Mean per-dimension standard deviation. Near zero means collapse.
+
+    Not scale free: it answers "is there any magnitude here?", so it reads as
+    dead whenever the embeddings are uniformly tiny, however well spread their
+    directions are. Read it with :func:`mean_cosine_similarity`, which asks the
+    independent question, and see :func:`collapse_report`.
+    """
     return jnp.mean(jnp.std(_flatten(z), axis=0))
 
 
@@ -67,7 +73,9 @@ def mean_cosine_similarity(z: Array) -> Array:
     """Average pairwise cosine similarity between samples (excluding self).
 
     Approaching ``1.0`` means every input maps to nearly the same direction --
-    collapse, even if the per-dimension variance still looks healthy.
+    collapse, even if the per-dimension variance still looks healthy. Scale
+    free, being computed on normalised vectors, so the converse also holds: a
+    respectable value here says nothing about whether the magnitudes are alive.
     """
     z = _flatten(z)
     z = z / (jnp.linalg.norm(z, axis=-1, keepdims=True) + 1e-8)
@@ -78,7 +86,16 @@ def mean_cosine_similarity(z: Array) -> Array:
 
 
 def collapse_report(z: Array) -> dict[str, Array]:
-    """All of the above at once, for logging alongside the loss."""
+    """All of the above at once, for logging alongside the loss.
+
+    Report the whole dict rather than picking one number. ``feature_std`` and
+    ``mean_cosine`` measure independent failures and genuinely come apart: a
+    Push-T encoder trained at a small budget reached ``mean_cosine`` 0.73, which
+    looks like directions spreading out, while ``feature_std`` stayed at 0.0076,
+    two orders of magnitude below the 0.81 of the healthy run. The directions
+    separated and the magnitude never woke up. Either number alone would have
+    been read as progress.
+    """
     return {
         "rankme": rankme(z),
         "rank_ratio": effective_rank_ratio(z),
