@@ -67,24 +67,32 @@ def rollout_policy(env, act, *, seed, length, rng=None):
     )
 
 
-def make_actor(model, *, key, plan: bool):
-    """An ``act`` closure: plan with the learned model, or use the policy prior."""
-    if not plan:
-        policy = model.policy.eval_mode()
-        encode = eqx.filter_jit(model.encode)
-        return lambda obs: policy.act(encode(jnp.asarray(obs)))
-
+# These two are jitted once, at module level, with the model passed in as an
+# argument rather than closed over. That distinction is not stylistic: a
+# filter_jit wrapper built inside the training loop closes over the weights,
+# which makes them compile-time constants baked into that executable, so every
+# iteration leaves another full copy of the model resident on the device. It
+# also recompiles the planner every iteration. See docs/findings.md.
+@eqx.filter_jit
+def _planned_action(model, key, obs):
+    """One MPPI-planned action for ``obs``."""
     search, cost = xwm.families.tdmpc2.planner(
         model, horizon=HORIZON, n_samples=PLAN_SAMPLES, n_iters=PLAN_ITERS
     )
-    dynamics = model.dynamics_fn()
-    encode = eqx.filter_jit(model.encode)
+    return search.plan(key, model.dynamics_fn(), model.encode(obs), cost).actions[0]
 
-    @eqx.filter_jit
-    def plan_from(z):
-        return search.plan(key, dynamics, z, cost).actions[0]
 
-    return lambda obs: plan_from(encode(jnp.asarray(obs)))
+@eqx.filter_jit
+def _prior_action(model, obs):
+    """One action from the policy prior alone, with no search."""
+    return model.policy.eval_mode().act(model.encode(obs))
+
+
+def make_actor(model, *, key, plan: bool):
+    """An ``act`` closure: plan with the learned model, or use the policy prior."""
+    if not plan:
+        return lambda obs: _prior_action(model, jnp.asarray(obs))
+    return lambda obs: _planned_action(model, key, jnp.asarray(obs))
 
 
 def evaluate(env, model, *, key, episodes, plan=True):

@@ -38,11 +38,35 @@ render = [
   "ovrtx",                    # the path tracer itself
   "pyglet>=2.0",              # ViewerRTX's camera maths, headless included
 ]
+# Readers for recorded datasets (xwm.datasets). Everything here is a *format*
+# dependency, not a framework: parquet and mp4 for the LeRobot layout, HDF5 for
+# LIBERO and RoboMimic. OGBench needs nothing beyond the standard library, which
+# is why that reader works on a bare install.
+#
+# `tensorflow-datasets` is deliberately absent even though xwm.datasets.rlds
+# needs it. It brings TensorFlow, whose CUDA pins fight JAX's on any GPU box --
+# the same trap as `--all-extras` and ovrtx. That reader asks for it by name at
+# call time, and most Open X-Embodiment data is reachable through its LeRobot
+# mirrors without it.
+data = [
+  "huggingface-hub>=0.26",    # resolve and cache datasets from the Hub
+  "pyarrow>=17",              # LeRobot keeps states and actions in parquet
+  "av>=12",                   # decode one episode's frame span out of an mp4 shard
+  "h5py>=3.11",               # LIBERO and RoboMimic
+  "pillow>=10.0",             # resizing, and LIBERO's JPEG-compressed frames
+]
 dev = [
   "pytest>=8.0",
   "matplotlib>=3.8",
   "pillow>=10.0",
   "ruff>=0.6",
+  # The dataset readers are tested against fixtures written in the real on-disk
+  # formats, so CI needs the format libraries even though it never downloads
+  # anything. Same reason `plots`' deps are duplicated here.
+  "huggingface-hub>=0.26",
+  "pyarrow>=17",
+  "av>=12",
+  "h5py>=3.11",
 ]
 # The API reference imports the package, so `docs` is additive to the core install
 # rather than standalone.

@@ -24,12 +24,14 @@ Each extra is additive and independent.
 | `plots` | `matplotlib`, `pillow` | figures, GIFs, LaTeX/JSON tables |
 | `newton` | `newton`, `warp-lang`, `GitPython`, `trimesh`, `pycollada`, `usd-core` | the Franka arm in [`xwm.envs`](../reference/envs.md) |
 | `render` | `ovrtx`, `pyglet` | path-traced figures, NVIDIA GPUs only |
-| `dev` | `pytest`, `ruff`, `matplotlib`, `pillow` | tests and linting |
+| `data` | `huggingface-hub`, `pyarrow`, `av`, `h5py`, `pillow` | recorded datasets in [`xwm.datasets`](../reference/datasets.md) |
+| `dev` | `pytest`, `ruff`, `matplotlib`, `pillow`, and the `data` readers | tests and linting |
 
 ```bash
 pip install "xwm[plots]"            # figures and tables
 pip install "xwm[newton]"           # the robot
 pip install "xwm[newton,render]"    # the robot, path traced
+pip install "xwm[data]"             # DROID, LIBERO, Open X-Embodiment
 ```
 
 !!! note "Why `newton` carries extra dependencies"
@@ -38,6 +40,23 @@ pip install "xwm[newton,render]"    # the robot, path traced
     fetches the robot assets, `trimesh` and `pycollada` read the FR3 URDF's
     meshes, and `usd-core` is what lets `ViewerUSD` export a stage for offline
     rendering.
+
+!!! note "What `data` does *not* include"
+
+    Two readers ask for a dependency this extra deliberately leaves out.
+
+    `xwm.datasets.rlds` reads Open X-Embodiment in its native RLDS form, which
+    needs `tensorflow-datasets` — and that brings TensorFlow, whose CUDA pins
+    fight JAX's on any GPU machine. Most of OXE is mirrored into the LeRobot
+    layout, which needs none of it, so the registry points `oxe/*` at those
+    mirrors and only `rlds/*` asks for `pip install tensorflow-datasets`.
+
+    `xwm.datasets.offline.load_minari` needs `minari`, which brings Gymnasium
+    and a set of environment dependencies most users already pin themselves:
+    `pip install minari`.
+
+    The OGBench reader needs nothing at all beyond the standard library, so it
+    works on a bare `pip install xwm`.
 
 ## GPU
 

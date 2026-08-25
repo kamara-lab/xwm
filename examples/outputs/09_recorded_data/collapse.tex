@@ -1,0 +1,13 @@
+\begin{table}[t]
+\centering
+\begin{tabular}{lrrrr}
+\toprule
+source & rankme & rank\_ratio & feature\_std & mean\_cosine \\
+\midrule
+recorded (lerobot/pusht) & 1445.4548 & 0.0588 & 0.8154 & 0.1109 \\
+synthetic (PushWorld) & 878.6244 & 0.0358 & 0.8359 & 0.0626 \\
+\bottomrule
+\end{tabular}
+\caption{Collapse diagnostics on the held-out clips. feature\_std near 0 with mean\_cosine near 1 means the horizon numbers are measuring a dead representation.}
+\label{tab:collapse}
+\end{table}

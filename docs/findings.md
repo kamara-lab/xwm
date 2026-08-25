@@ -1,8 +1,8 @@
 # Findings
 
 Measured results and the diagnoses behind them. Numbers here come from runs whose
-settings are recorded in `deploy/_shared.py`, unless a section says otherwise —
-at least one records a smoke run at the laptop defaults, and says so, because a
+settings are recorded in `deploy/_shared.py`, unless a section says otherwise: at
+least one records a smoke run at the laptop defaults, and says so, because a
 labelled negative result beats a quiet omission. Where a claim was overturned by
 a later run, both are kept.
 
@@ -160,6 +160,16 @@ the probe only reaches 0.329.
 `reg_weight` also behaves monotonically for SIGReg: 5 → 20 trades prediction loss
 (0.0006 → 0.0319) for rank (57 → 93). That is the trade-off the single coefficient
 is meant to expose.
+
+One caveat about the `none` control, added after it misled a later experiment.
+It is the row a reader consults to learn what collapse looks like, and it has
+`mean_cosine` and `feature_std` failing *together* — 1.0000 against 1.7e-05 —
+which teaches that the two move as one. They do not. On recorded data they come
+apart: `mean_cosine` 0.73 with `feature_std` 0.0076, directions well separated
+and magnitudes still dead. See [the recorded-data
+section](#a-falling-prediction-loss-on-recorded-data-and-a-dead-encoder-under-it)
+for that measurement, and read the whole of
+[`collapse_report`](reference/metrics.md) rather than any one number of it.
 
 ## Video tube masking
 
@@ -375,6 +385,133 @@ Value loss 2.807, reward loss 0.948.
 It is on this page because a library that only shows its wins is not much use for
 deciding what to run, and because a smoke run labelled as one is more useful than
 a gap.
+
+## A falling prediction loss on recorded data, and a dead encoder under it
+
+Building [example 09](guides/examples.md), the first version trained the encoder
+jointly with the action-conditioned latent-prediction loss — no pretraining, no
+frozen stage. It looked like it worked. On 60 episodes of `lerobot/pusht` the loss
+fell from 0.023 to 0.0004 over 400 steps, a factor of 50, and the same on
+`PushWorld`. Every horizon ratio came out at 1.00–1.03: the learned dynamics
+never beat predicting that nothing changes, at any horizon, on either source.
+
+A control run at reduced settings (`PushWorld`, 48 sequences, 60 steps, depth-2
+encoder) says why:
+
+| stage 2 encoder | final loss | feature_std | mean_cosine | rankme | horizon ratio |
+| --- | --- | --- | --- | --- | --- |
+| trained jointly | 0.0160 | 0.0308 | 0.9983 | 54.2 | 1.867 |
+| LeJEPA-pretrained, frozen | 0.0913 | 0.2317 | 0.8543 | 62.8 | 0.717 |
+
+The joint run has the better loss by a factor of six and a collapsed
+representation underneath it — `mean_cosine = 0.998` means every observation maps
+to nearly the same vector, so predicting the next latent is trivial and predicting
+it *conditioned on the action* is unnecessary. Its horizon ratio of 1.87 is worse
+than the no-op baseline. The frozen run's loss is six times higher and its
+dynamics actually work.
+
+This is the same result as [Anti-collapse strategies](#anti-collapse-strategies)
+above, reached from the other direction: there, the control with no countermeasure
+won the prediction loss by seven orders of magnitude and learned nothing. Here the
+countermeasure is structural rather than a regulariser — freezing the encoder
+makes the prediction targets fixed functions of the observations, so there is no
+longer any way to lower the loss by degrading the representation. Example 04 was
+already built this way and its docstring says so; example 09 had to rediscover it.
+
+Example 09 now prints [`collapse_report`](reference/metrics.md) beside the horizon
+ratio, because the ratio alone cannot distinguish "hard task" from "dead
+encoder".
+
+### The same recipe works on the synthetic world and not on the recorded one
+
+At the example's laptop defaults — 40 episodes, 300 LeJEPA steps, 300 dynamics
+steps, 32 px, 128-wide depth-4, `reg_weight = 20` — the two sources come out on
+opposite sides of the line:
+
+| source | feature_std | mean_cosine | rankme | horizon ratio (h=1 → 8) |
+| --- | --- | --- | --- | --- |
+| PushWorld (synthetic) | 0.1824 | 0.9304 | 134 | 0.87 → 0.71 |
+| `lerobot/pusht` (recorded) | 0.0252 | 0.9986 | 240 | 1.00 → 1.01 |
+
+The synthetic run works: dynamics that beat the no-op baseline by 13–29%. The
+recorded run, on identical architecture, budget and objective, has a collapsed
+encoder and a ratio pinned at 1.00.
+
+**It is not the resolution.** Push-T at 32 px has a *lower* pixel standard
+deviation than the synthetic world (0.073 against 0.108) — a mostly-static scene
+with a small block and a small pusher — so the first guess was that downsizing
+had destroyed the signal. Doubling to 64 px at the same token count does not
+rescue the encoder. Stage 1 only, 300 steps:
+
+| resolution | reg_weight | pred loss | feature_std | mean_cosine | rankme |
+| --- | --- | --- | --- | --- | --- |
+| 32 px | 20 | 0.0064 | 0.0025 | 0.9439 | 48.0 |
+| 32 px | 100 | 0.0606 | 0.0076 | 0.7313 | 34.2 |
+| 64 px | 20 | 0.0078 | 0.0031 | 0.8927 | 54.5 |
+| 64 px | 100 | 0.0658 | 0.0069 | 0.8262 | 49.6 |
+
+**And it is not the regulariser weight on its own.** That table is also the
+isolating experiment, and it comes out negative: raising `reg_weight` tenfold at
+the laptop budget moves `mean_cosine` a long way (0.944 → 0.731) and leaves
+`feature_std` two orders of magnitude short of healthy. The cheapest single knob
+is measurably insufficient, which is the more useful half of this section — it
+says not to try the obvious thing first.
+
+It is also where the two diagnostics come apart. `mean_cosine` 0.73 with
+`feature_std` 0.0076 is an embedding whose *directions* are well separated and
+whose *magnitudes* never woke up. The
+[anti-collapse table](#anti-collapse-strategies) cannot show that case, because
+its `none` control has both failing together.
+
+### Scaling the recipe does rescue it, on a GPU
+
+The combination the section above said had not been run, run on one A10 for 42
+minutes: all 206 Push-T episodes at 96 px (2,749 clips), `reg_weight = 100`,
+6,000 steps per stage, a 384-wide depth-6 encoder and predictor, batch 16.
+
+| source | feature_std | mean_cosine | rankme | horizon ratio (h=1 → 8) |
+| --- | --- | --- | --- | --- |
+| `lerobot/pusht` (recorded) | 0.8154 | 0.1109 | 1445 | **0.87 → 0.78** |
+| PushWorld (synthetic) | 0.8359 | 0.0626 | 879 | 0.78 → 0.73 |
+
+The recorded encoder is healthy — `feature_std` 0.815 against the laptop run's
+0.025, `mean_cosine` 0.111 against 0.999 — and its dynamics beat the no-op
+baseline by 13% at one step and 22% at eight. So the collapse was a recipe and
+budget problem, not something intrinsic to a low-variance recorded scene, and the
+transfer question flips: at this scale the recorded curve and the synthetic curve
+are the same shape and within 0.05 of each other.
+
+**Four things changed at once** — regulariser weight, 20× the steps, 5× the
+episodes, 3× the width — so this isolates nothing. What it establishes is that
+the collapse is escapable, and combined with the negative arm above, that the
+weight alone is not what escapes it.
+
+Two smaller things worth keeping:
+
+* The healthy run's *losses are far higher*. Stage 2 ends at
+  `loss_rollout` 0.63 here against 0.0011 in the collapsed laptop run — a factor
+  of 570. A low prediction loss remains the least trustworthy number on the page.
+* Both horizon curves *improve* with horizon rather than degrading (0.87 → 0.78,
+  0.78 → 0.73). The no-op baseline gets worse faster than the model does, which
+  is what a latent that tracks a moving scene should do, and the opposite of the
+  compounding error the [Compounding error](#compounding-error) section measures
+  on the sprite world.
+
+### `XLA_PYTHON_CLIENT_PREALLOCATE=false` does not make a GPU bigger
+
+Worth stating because the neighbouring [MuZero](#muzero-on-the-franka-arm)
+section introduces that setting as a fix. The first GPU attempt at the run above
+died with `RESOURCE_EXHAUSTED: Out of memory while trying to allocate 12.01GiB`
+on a 23 GiB A10 **with the env var already set** by the Modal image. Disabling
+preallocation removes a reservation conflict between JAX and a second allocator
+in the same process; it does nothing about one op that honestly needs 12 GiB. The
+cause there was batch 64 through a dynamics model that unrolls eight steps over a
+64-token grid and keeps every step's activations for the backward pass; batch 16
+fits.
+
+The allocation size in the message is the thing to read. A named size points at
+batch or activations. A failure to load something small — a CUBIN, a few
+megabytes — points instead at what is already resident.
 
 ## Plot palettes
 

@@ -24,6 +24,48 @@ from ..core.module import Module
 from ..core.types import Array, PRNGKey
 
 
+def distance_field(size: int, centre: Array) -> Array:
+    """``(size, size)`` distance from every pixel centre to ``centre``.
+
+    Pixel *centres*, not corners, so a sprite at 0.5 renders symmetrically.
+    """
+    grid = (jnp.arange(size) + 0.5) / size
+    dy = grid[:, None] - centre[1]
+    dx = grid[None, :] - centre[0]
+    return jnp.sqrt(dy**2 + dx**2)
+
+
+def soft_disc(size: int, centre: Array, radius: float, *, sharpness: float = 0.6) -> Array:
+    """A soft disc at ``centre``, as a ``(size, size)`` map in ``[0, 1]``.
+
+    Soft rather than hard because a hard disc is a step function of position:
+    its gradient is zero everywhere and the rendered image only changes once the
+    centre crosses a pixel boundary. A sigmoid edge makes sub-pixel motion
+    visible, which is what a one-step prediction loss needs in order to have any
+    signal at all at small displacements.
+
+    ``sharpness`` is scaled by ``size``, so an edge is equally crisp at 32 px and
+    at 96 px rather than turning to fog as the resolution rises.
+    """
+    return jax.nn.sigmoid((radius - distance_field(size, centre)) * size * sharpness)
+
+
+def soft_ring(
+    size: int, centre: Array, radius: float, *, width: float = 0.018, sharpness: float = 1.4
+) -> Array:
+    """A soft annulus of radius ``radius``: an outline rather than a filled disc.
+
+    For drawing a *goal*, which is a place rather than an object. A filled disc
+    at goal radius is the largest, brightest thing in the frame and reads as the
+    subject of the picture; an outline says "here" without competing with the
+    objects that actually move. It is also how every real pushing benchmark
+    draws its target, Push-T included, so the synthetic world and the recorded
+    one become comparable by eye.
+    """
+    offset = jnp.abs(distance_field(size, centre) - radius)
+    return jax.nn.sigmoid((width - offset) * size * sharpness)
+
+
 class SpriteState(NamedTuple):
     """World state: a controlled agent plus ``n_distractors`` random walkers."""
 
@@ -43,6 +85,21 @@ class SpriteWorld(Module):
         damping: velocity decay per step; ``1.0`` is frictionless.
         action_scale: acceleration applied per unit of action.
         distractor_speed: random-walk step size for the distractors.
+        n_occluders: static vertical bars drawn *in front of* the sprites, which
+            hide them without touching the dynamics. Zero by default. This is
+            the one knob that makes the world partially observable, and partial
+            observability is what separates a latent state carried through time
+            from a per-frame embedding: behind a bar the current frame says
+            nothing about where the agent is, so only a model that integrated
+            its own predictions can still say.
+        occluder_width: bar width in normalised units. The default exceeds the
+            default sprite *diameter*, deliberately: a bar narrower than the
+            sprite clips its edges but never hides it, and a world where the
+            agent is always partly visible is not partially observable at all.
+            Note the other end of the same constraint: at full action the agent
+            covers 0.3 per step, more than one bar width, so it can cross a bar
+            between two frames and never be observed behind it. Occlusion bites
+            in the smoothed-action regime :func:`random_actions` produces.
 
     The defaults make one step of full action displace the agent by about 1.5
     radii. That matters for evaluation: with slower dynamics, a single step
@@ -58,6 +115,8 @@ class SpriteWorld(Module):
     damping: float = eqx.field(static=True)
     action_scale: float = eqx.field(static=True)
     distractor_speed: float = eqx.field(static=True)
+    n_occluders: int = eqx.field(static=True)
+    occluder_width: float = eqx.field(static=True)
 
     def __init__(
         self,
@@ -69,6 +128,8 @@ class SpriteWorld(Module):
         damping: float = 0.5,
         action_scale: float = 0.15,
         distractor_speed: float = 0.05,
+        n_occluders: int = 0,
+        occluder_width: float = 0.26,
     ):
         self.size = size
         self.n_distractors = n_distractors
@@ -77,6 +138,8 @@ class SpriteWorld(Module):
         self.damping = damping
         self.action_scale = action_scale
         self.distractor_speed = distractor_speed
+        self.n_occluders = n_occluders
+        self.occluder_width = occluder_width
 
     @property
     def action_dim(self) -> int:
@@ -121,18 +184,29 @@ class SpriteWorld(Module):
     # -- rendering -----------------------------------------------------------
     def _blob(self, centre: Array) -> Array:
         """A soft disc at ``centre``, as a ``(size, size)`` map in ``[0, 1]``."""
+        return soft_disc(self.size, centre, self.radius)
+
+    def _occlusion(self) -> Array:
+        """``(size, size)`` in ``[0, 1]``: 1 where an occluder hides the scene.
+
+        Static vertical bars at fixed positions, so occlusion is a property of
+        the world's geometry rather than part of its state -- nothing about the
+        dynamics changes, only what an observation reveals about them.
+        """
         grid = (jnp.arange(self.size) + 0.5) / self.size
-        dy = grid[:, None] - centre[1]
-        dx = grid[None, :] - centre[0]
-        d = jnp.sqrt(dy**2 + dx**2)
-        return jax.nn.sigmoid((self.radius - d) * self.size * 0.6)
+        centres = (jnp.arange(self.n_occluders) + 1.0) / (self.n_occluders + 1.0)
+        offset = jnp.abs(grid[None, :] - centres[:, None])
+        bars = jax.nn.sigmoid((self.occluder_width / 2 - offset) * self.size * 0.6)
+        return jnp.broadcast_to(jnp.max(bars, axis=0), (self.size, self.size))
 
     def render(self, state: SpriteState) -> Array:
         """Render one state to ``(3, size, size)`` in ``[0, 1]``.
 
         The agent occupies the red channel and the distractors the green one, so
         a probe can tell trivially whether a representation kept the
-        controllable content, the uncontrollable content, or both.
+        controllable content, the uncontrollable content, or both. Occluders,
+        when configured, are drawn last in the blue channel and zero out
+        whatever they cover.
         """
         agent = self._blob(state.pos)
         if self.n_distractors:
@@ -140,8 +214,13 @@ class SpriteWorld(Module):
         else:
             distractors = jnp.zeros_like(agent)
         grid = (jnp.arange(self.size) + 0.5) / self.size
-        background = 0.15 * (grid[:, None] + grid[None, :]) / 2.0
-        return jnp.clip(jnp.stack([agent, distractors, background + 0.0 * agent]), 0.0, 1.0)
+        background = 0.15 * (grid[:, None] + grid[None, :]) / 2.0 + 0.0 * agent
+        if self.n_occluders:
+            hidden = self._occlusion()
+            agent = agent * (1.0 - hidden)
+            distractors = distractors * (1.0 - hidden)
+            background = background + 0.6 * hidden
+        return jnp.clip(jnp.stack([agent, distractors, background]), 0.0, 1.0)
 
     # -- trajectories --------------------------------------------------------
     def rollout(self, key: PRNGKey, actions: Array) -> tuple[Array, SpriteState]:

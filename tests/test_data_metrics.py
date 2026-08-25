@@ -87,6 +87,194 @@ def test_world_is_jittable_and_vmappable(key):
     assert batched(jr.split(key, 4), actions).shape == (4, 4, 3, 16, 16)
 
 
+# -- occlusion --------------------------------------------------------------
+def test_occluders_hide_the_agent_without_changing_its_dynamics(key):
+    """The bars must be an observation change only, never a dynamics change."""
+    plain = xwm.data.SpriteWorld(32, n_distractors=0)
+    occluded = xwm.data.SpriteWorld(32, n_distractors=0, n_occluders=2)
+    # Gently, at ~0.06 per step: at full action the agent covers 0.3 per step
+    # and jumps clean over a 0.26 bar without ever being seen behind it.
+    actions = jnp.tile(jnp.array([0.2, 0.0]), (30, 1))
+    _, states_plain = plain.rollout(key, actions)
+    frames, states_occluded = occluded.rollout(key, actions)
+    assert jnp.allclose(states_plain.pos, states_occluded.pos)
+    # Somewhere along the traverse the agent is behind a bar and nearly gone.
+    visibility = jnp.max(frames[:, 0], axis=(1, 2))
+    assert float(jnp.min(visibility)) < 0.25
+    assert float(jnp.max(visibility)) > 0.5
+
+
+def test_an_agent_at_a_bar_centre_is_hidden(key):
+    """Directly, without relying on a trajectory to line up: 0.84 -> 0.18."""
+    occluded = xwm.data.SpriteWorld(32, n_distractors=0, n_occluders=2)
+    plain = xwm.data.SpriteWorld(32, n_distractors=0)
+    behind = occluded.reset(key)._replace(pos=jnp.array([1.0 / 3.0, 0.5]))
+    assert float(jnp.max(occluded.render(behind)[0])) < 0.25
+    assert float(jnp.max(plain.render(behind)[0])) > 0.7
+
+
+def test_no_occluders_is_the_default_and_changes_nothing(key):
+    world = xwm.data.SpriteWorld(16, n_distractors=1)
+    assert world.n_occluders == 0
+    frames, _ = world.rollout(key, jnp.zeros((3, 2)))
+    explicit = xwm.data.SpriteWorld(16, n_distractors=1, n_occluders=0)
+    assert jnp.allclose(frames, explicit.rollout(key, jnp.zeros((3, 2)))[0])
+
+
+# -- pushing ----------------------------------------------------------------
+def test_the_puck_moves_only_on_contact(key):
+    """The property the whole world exists for: a hinge at the contact boundary."""
+    world = xwm.data.PushWorld()
+    state = world.reset(key)
+    outward = state.pusher - state.puck
+    outward = outward / jnp.linalg.norm(outward)
+    retreat = world.step(state, outward)
+    approach = world.step(state, -outward)
+    assert float(jnp.linalg.norm(retreat.puck - state.puck)) == 0.0
+    assert float(jnp.linalg.norm(approach.puck - state.puck)) > 0.05
+
+
+def test_push_dynamics_are_not_linear_in_the_action(key):
+    """f(a) + f(-a) != 2 f(0) once contact is involved."""
+    world = xwm.data.PushWorld()
+    state = world.reset(key)
+    towards = (state.puck - state.pusher) / jnp.linalg.norm(state.puck - state.pusher)
+    forward = world.step(state, towards).puck
+    backward = world.step(state, -towards).puck
+    still = world.step(state, jnp.zeros((2,))).puck
+    assert not jnp.allclose(forward + backward, 2.0 * still, atol=1e-3)
+
+
+def test_push_reward_is_bounded_and_rises_as_the_puck_nears_the_goal(key):
+    world = xwm.data.PushWorld()
+    state = world.reset(key)
+    near = state._replace(puck=state.goal)
+    assert float(world.reward(near)) > float(world.reward(state))
+    assert -1.0 <= float(world.reward(state)) <= 0.0
+    assert float(world.success(near)) == 1.0
+    assert float(world.success(state)) == 0.0
+
+
+def test_puck_and_pusher_stay_in_bounds(key):
+    world = xwm.data.PushWorld(16)
+    _, states = world.rollout(key, jnp.tile(jnp.array([1.0, 1.0]), (40, 1)))
+    assert float(jnp.min(states.puck)) >= 0.0 and float(jnp.max(states.puck)) <= 1.0
+    assert float(jnp.min(states.pusher)) >= 0.0 and float(jnp.max(states.pusher)) <= 1.0
+
+
+def test_push_sequences_contract(key):
+    ds = xwm.data.push_sequences(key, 3, 9)
+    assert ds["video"].shape == (3, 9, 3, 32, 32)
+    assert ds["action"].shape == (3, 8, 2)  # T - 1 actions for T frames
+    assert ds["state"].shape == (3, 9, 8)
+    # Reward aligns with the actions, not the frames: it is the reward of the
+    # state each action led to, which is what ReplayBuffer.add_episode wants.
+    assert ds["reward"].shape == (3, 8)
+    assert ds["success"].shape == (3, 8)
+
+
+def test_push_search_beats_a_single_random_sequence(key):
+    """A planner must have something to find, or the task measures nothing."""
+    world = xwm.data.PushWorld()
+    actions = xwm.data.random_actions(key, 64, 48, 2, smoothness=0.7)
+
+    def closest(a):
+        _, states = world.rollout(jr.PRNGKey(7), a)
+        return jnp.min(jax.vmap(world.goal_distance)(states))
+
+    reached = jax.jit(jax.vmap(closest))(actions)
+    assert float(jnp.min(reached)) < world.goal_radius   # search solves it
+    assert float(jnp.median(reached)) > world.goal_radius  # random does not
+
+
+# -- maze -------------------------------------------------------------------
+def test_the_maze_agent_cannot_walk_through_walls(key):
+    world = xwm.data.MazeWorld(32)
+    # Drive hard in every direction for a long time from many starts.
+    for seed in range(8):
+        for direction in ([1.0, 0.0], [-1.0, 0.0], [0.0, 1.0], [0.0, -1.0]):
+            actions = jnp.tile(jnp.array(direction), (40, 1))
+            _, states = world.rollout(jr.PRNGKey(seed), actions)
+            assert not bool(jnp.any(jax.vmap(world._blocked)(states.pos)))
+
+
+def test_the_maze_agent_slides_along_a_wall(key):
+    """A blocked axis must not freeze the other one, or corridors are traps."""
+    world = xwm.data.MazeWorld(32)
+    state = world.reset(jr.PRNGKey(0))
+    diagonal = jnp.tile(jnp.array([1.0, 1.0]), (12, 1))
+    _, states = world.rollout(jr.PRNGKey(0), diagonal)
+    moved = jnp.abs(states.pos[-1] - states.pos[0])
+    assert float(jnp.max(moved)) > 0.05
+    del state
+
+
+def test_maze_reward_is_sparse_and_reachable(key):
+    ds = xwm.data.maze_sequences(key, 128, 64)
+    reward = ds["reward"]
+    assert set(np.unique(np.asarray(reward)).tolist()) <= {0.0, 1.0}
+    touched = float(jnp.mean(jnp.max(reward, axis=1)))
+    # Measured at ~0.33 for these defaults; assert the band, not the number.
+    assert 0.15 < touched < 0.6
+
+
+def test_maze_sequences_contract(key):
+    ds = xwm.data.maze_sequences(key, 3, 9)
+    assert ds["video"].shape == (3, 9, 3, 32, 32)
+    assert ds["action"].shape == (3, 8, 2)
+    assert ds["state"].shape == (3, 9, 6)
+    assert ds["reward"].shape == (3, 8)
+    assert ds["distance"].shape == (3, 9)
+
+
+def test_maze_layout_is_validated():
+    with pytest.raises(ValueError, match="border"):
+        xwm.data.MazeWorld(16, layout=("....", "....", "....", "...."))
+    with pytest.raises(ValueError, match="square"):
+        xwm.data.MazeWorld(16, layout=("####", "#..#", "###"))
+
+
+def test_new_worlds_are_jittable_and_vmappable(key):
+    actions = jnp.zeros((3, 2))
+    for world in (xwm.data.PushWorld(16), xwm.data.MazeWorld(16)):
+        batched = jax.jit(jax.vmap(world.observe, in_axes=(0, None)))
+        assert batched(jr.split(key, 4), actions).shape == (4, 4, 3, 16, 16)
+
+
+# -- the reward-driven path -------------------------------------------------
+def test_push_data_trains_tdmpc2_through_the_replay_buffer(key):
+    """The whole point of PushWorld: a CPU reward task for the value families.
+
+    Before this world existed, TD-MPC2 and MuZero had exactly one task to train
+    on and it needed the `newton` extra.
+    """
+    world = xwm.data.PushWorld(16)
+    data = xwm.data.push_sequences(key, 8, 9, world=world)
+
+    buffer = xwm.training.ReplayBuffer(
+        8 * 8, (world.state_dim,), (world.action_dim,), seed=0
+    )
+    for i in range(data["state"].shape[0]):
+        buffer.add_episode(
+            np.asarray(data["state"][i]),
+            np.asarray(data["action"][i]),
+            np.asarray(data["reward"][i]),
+        )
+    assert buffer.episodes == 8
+
+    agent = xwm.families.tdmpc2.tdmpc2(
+        key=key,
+        action_dim=world.action_dim,
+        observation="state",
+        state_dim=world.state_dim,
+    )
+    trainer = xwm.training.Trainer(agent, xwm.training.adamw(1e-3))
+    batches = (buffer.sample(4, 3) for _ in range(6))
+    state, history = trainer.fit(batches, steps=5, key=key, log_every=5)
+    assert int(state.step) == 5
+    assert bool(jnp.isfinite(jnp.asarray(history[-1]["loss"])))
+
+
 # -- batching ---------------------------------------------------------------
 def test_iter_batches_covers_the_dataset(key):
     data = {"x": jnp.arange(20).reshape(20, 1)}
@@ -200,3 +388,30 @@ def test_knn_classification_requires_n_classes(key):
     z = jr.normal(key, (10, 4))
     with pytest.raises(ValueError, match="n_classes"):
         xwm.metrics.knn_probe(z, jnp.zeros(10, int), z, jnp.zeros(10, int), classification=True)
+
+
+def test_feature_std_and_mean_cosine_measure_independent_failures():
+    """The two collapse metrics must be able to disagree.
+
+    They are documented as independent, and a real run proved it: a Push-T
+    encoder reached mean_cosine 0.73 (directions spreading) while feature_std sat
+    at 0.0076 (magnitude dead). If either number were a proxy for the other,
+    reporting one would be enough, and a reader would take that run for progress.
+    """
+    key = jr.PRNGKey(0)
+
+    # Directions spread, magnitude dead: what the small-budget run looked like.
+    tiny = 1e-3 * jr.normal(key, (64, 32))
+    assert float(xwm.metrics.feature_std(tiny)) < 1e-2
+    assert abs(float(xwm.metrics.mean_cosine_similarity(tiny))) < 0.2
+
+    # Directions collapsed, magnitude healthy: one direction, varied lengths.
+    direction = jr.normal(jr.fold_in(key, 1), (32,))
+    scales = jnp.linspace(0.5, 5.0, 64)[:, None]
+    rays = scales * direction
+    assert float(xwm.metrics.feature_std(rays)) > 0.5
+    assert float(xwm.metrics.mean_cosine_similarity(rays)) > 0.99
+
+    # And the report carries both, so neither failure can hide behind the other.
+    report = xwm.metrics.collapse_report(tiny)
+    assert {"rankme", "rank_ratio", "feature_std", "mean_cosine"} <= set(report)

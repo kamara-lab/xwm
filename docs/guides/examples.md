@@ -1,9 +1,10 @@
 # Examples
 
-Eight runnable scripts, in the order they build on each other. **01–05 run on CPU**
-against the synthetic world in [`xwm.data`](../reference/data.md), so there is no
+Nine runnable scripts, in the order they build on each other. **01–05 run on CPU**
+against the synthetic worlds in [`xwm.data`](../reference/data.md), so there is no
 dataset to download. **06–08** need the `newton` extra and download the Franka asset
-on first run.
+on first run. **09** needs the `data` extra and downloads ~30 MB of recorded robot
+data.
 
 ```bash
 python examples/01_image_ijepa.py
@@ -19,6 +20,7 @@ python examples/01_image_ijepa.py
 | `06_franka_newton.py` | the same pipeline on a Franka arm |
 | `07_tdmpc2_franka.py` | TD-MPC2: learn the model *and* the value |
 | `08_muzero_franka.py` | MuZero: a model that agrees with its own search |
+| `09_recorded_data.py` | a recorded dataset, against the synthetic world built to abstract it |
 
 Measured results, including the negative ones, are collected in
 **[Findings](../findings.md)**.
@@ -35,6 +37,14 @@ out = setup("01_image_ijepa")           # makes examples/outputs/01_image_ijepa/
 So the same file runs on a laptop and on an A100. See
 [Running on GPU](gpu.md). Defaults are deliberately small: 32 px, a few hundred
 steps, minutes on CPU.
+
+`09` is the exception and the slowest of the nine, because it trains four models
+— two stages on each of two data sources. At its defaults it took 1494 s of CPU
+time on an M-series laptop; `XWM_EPISODES`, `XWM_PRETRAIN_STEPS` and
+`XWM_DYNAMICS_STEPS` are the knobs that shrink it. Its GPU run is 20× the work
+in 2515 s on one A10 (`modal run deploy/app_recorded.py`), and the two disagree
+about the headline result rather than merely about precision — see
+[Findings](../findings.md#scaling-the-recipe-does-rescue-it-on-a-gpu).
 
 Each writes `*.png` figures, `*.gif` animations, `*.json` metrics at full precision
 and `*.tex` tables of the same numbers, into `examples/outputs/<name>/`.
@@ -142,6 +152,15 @@ planning at all.
   ![TD-MPC2 learning curve](../outputs/07_tdmpc2_franka/learning_curve.png){ width="600" }
 </figure>
 
+<figure markdown="span">
+  [![TD-MPC2 planned episode](../outputs/07_tdmpc2_franka/episode_frames.png){ width="700" }](../outputs/07_tdmpc2_franka/episode_frames.png)
+  <figcaption markdown="span">
+  One planned episode: eight panels spaced evenly across its 21 frames rather than
+  taken from the opening. The arm extends across the frame as the plan unfolds.
+  Click through for the full render at 768 px per panel.
+  </figcaption>
+</figure>
+
 Writes: `episode.gif` and `episode_frames.png` at figure quality,
 `learning_curve.png`, `training_curve.png`, `policy_comparison.png`, and
 `episode.usd` for path tracing the same episode offline.
@@ -156,17 +175,59 @@ rather than what the policy did, and train the model to agree with it.
   ![MuZero learning curve](../outputs/08_muzero_franka/learning_curve.png){ width="600" }
 </figure>
 
+<figure markdown="span">
+  [![MuZero searched episode](../outputs/08_muzero_franka/episode_frames.png){ width="700" }](../outputs/08_muzero_franka/episode_frames.png)
+  <figcaption markdown="span">
+  One episode driven by tree search, panelled the same way. The arm lifts and
+  settles rather than extending: with 15 discrete actions the search found a short
+  path, so there is less motion here than in 07's continuous plan. That is the
+  policy, not the renderer.
+  </figcaption>
+</figure>
+
 Writes: `episode.gif` and `episode_frames.png` at figure quality,
 `learning_curve.png`, `training_curve.png`, `policy_comparison.png`, and
 `episode.usd` for path tracing the same episode offline.
 → [Findings](../findings.md#muzero-on-the-franka-arm)
+
+## 09 · A recorded dataset
+
+Train on data a real robot produced — `lerobot/pusht`, in the same LeRobot layout
+DROID and the Open X-Embodiment mirrors use — and put the horizon curve beside
+the synthetic world built to abstract it.
+
+<figure markdown="span">
+  ![One episode from each source](../outputs/09_recorded_data/episode_frames.png){ width="820" }
+  <figcaption>
+    Recorded and synthetic, each at the resolution it was recorded. Figures come
+    from the data's own resolution rather than the downsampled tensor the model
+    trains on; the synthetic panel is driven by a scripted controller, so the
+    frames show what the world is for rather than what random actions do.
+  </figcaption>
+</figure>
+
+<figure markdown="span">
+  ![Embedding spectra](../outputs/09_recorded_data/spectra.png){ width="560" }
+  <figcaption>
+    The most legible collapse diagnostic, and the reason this example prints
+    <code>collapse_report</code> beside its horizon ratio: a ratio near 1 cannot
+    tell a hard task from a dead encoder.
+  </figcaption>
+</figure>
+
+Writes: `episode.gif` and `episode_frames.png`, `horizon_error.png`,
+`spectra.png`, `latent_pca_{recorded,synthetic}.png`, both training curves, and
+`horizon_error` / `collapse` as JSON and LaTeX. **The committed artifacts are
+from the `gpu-recorded` preset**, not the laptop defaults — the two disagree
+about the result, which is the finding.
+→ [Findings](../findings.md#a-falling-prediction-loss-on-recorded-data-and-a-dead-encoder-under-it)
 
 ## Running at higher fidelity
 
 ```bash
 XWM_IMG_SIZE=128 XWM_STEPS=4000 python examples/01_image_ijepa.py   # locally
 modal run deploy/app_image.py --preset gpu                          # on a GPU
-./deploy/run_all.sh                                                 # all eight
+./deploy/run_all.sh                                                 # all nine
 ```
 
 See [Running on GPU](gpu.md) for what each preset changes.

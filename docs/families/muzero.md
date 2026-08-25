@@ -116,29 +116,37 @@ implement.
 
 ## What we measured
 
-!!! warning "A smoke run, not a result"
+On the Franka reach task, at 120 iterations with 64 simulations per move and a
+23,200-step buffer:
 
-    The only MuZero numbers this library currently has are from the laptop
-    defaults: 2 iterations, 8 simulations per move, a 65-step buffer. At that
-    budget MuZero + MCTS ends up more than twice as far from the goal as doing
-    nothing (0.505 m against a 0.214 m no-op baseline). That records a working
-    pipeline, not a working agent, and it is not evidence about the algorithm.
-    See [Findings](../findings.md#muzero-on-the-franka-arm).
+| policy | mean distance | gap closed |
+| --- | --- | --- |
+| no-op | 0.245 m | +0% |
+| MuZero + MCTS | **0.144 m** | **+42%** |
 
-The legible part is the **policy loss**: at 2.689 it is 99.3% of
-\(\ln 15 = 2.708\), the cross-entropy of a head that outputs a uniform
-distribution over 15 actions, so after two iterations the policy had learned
-essentially nothing. The search entropy, by contrast, says nothing at all here:
-with 8 simulations the root can visit at most 8 actions, so the statistic is
-capped by the budget rather than shaped by the model.
+Two diagnostics make that readable rather than merely favourable. The **policy
+loss** lands at 2.236, which is 82.6% of \(\ln 15 = 2.708\), the cross-entropy of
+a head emitting a uniform distribution over 15 actions: the prior has moved off
+uniform and learned something. And the **search entropy**, 1.06, is interpretable
+at this budget in a way it is not at small ones. With 64 simulations the root can
+visit all 15 actions, so the ceiling is \(\ln 15\) and the statistic is shaped by
+the model; with 8 simulations the root can visit at most 8, and the number is
+capped by the budget instead. A search entropy from a small-simulation run says
+nothing about what was learned.
+
+!!! note "One run, and read it against TD-MPC2's instability"
+
+    This is a single run. It shows no sign of the sign-flipping that
+    [TD-MPC2](tdmpc2.md) exhibits on the same task, where two runs at identical
+    settings gave +17.2% and -70.0%, but one run cannot establish stability
+    either. The honest asymmetry today: MuZero has one result and no evidence of
+    instability; TD-MPC2 has two results that disagree about direction. Earlier
+    MuZero numbers in this library came from a 2-iteration smoke run and are not
+    evidence about the algorithm. See [Findings](../findings.md).
 
 MuZero is the most sample-hungry of the three families, and it needs the search to
-be better than its own policy before its targets mean anything.
-
-Do not read across to [TD-MPC2](tdmpc2.md) as the safe alternative either: its own
-result on this task flips sign between identical runs, so neither value-based
-family currently has a reproducible number here. Both are documented in
-[Findings](../findings.md) with what they actually produced.
+be better than its own policy before its targets mean anything. That is what the
+budget above buys, and what a laptop budget cannot.
 
 ## Example
 

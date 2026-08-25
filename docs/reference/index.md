@@ -31,7 +31,8 @@ then every public symbol.
 
     [`xwm.planning`](planning.md) · CEM, MPPI, gradient, MPC, MCTS<br>
     [`xwm.envs`](envs.md) · a Franka FR3 in Newton<br>
-    [`xwm.data`](data.md) · batch streams, a synthetic world
+    [`xwm.data`](data.md) · batch streams, three synthetic worlds<br>
+    [`xwm.datasets`](datasets.md) · DROID, LIBERO, OGBench, Open X-Embodiment
 
 -   __Measuring__
 

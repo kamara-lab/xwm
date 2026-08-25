@@ -1,0 +1,27 @@
+{
+  "columns": [
+    "source",
+    "rankme",
+    "rank_ratio",
+    "feature_std",
+    "mean_cosine"
+  ],
+  "rows": [
+    {
+      "source": "recorded (lerobot/pusht)",
+      "rankme": 1445.454833984375,
+      "rank_ratio": 0.05881571024656296,
+      "feature_std": 0.8153688907623291,
+      "mean_cosine": 0.11085519939661026
+    },
+    {
+      "source": "synthetic (PushWorld)",
+      "rankme": 878.6243896484375,
+      "rank_ratio": 0.03575132042169571,
+      "feature_std": 0.8358526229858398,
+      "mean_cosine": 0.0625661090016365
+    }
+  ],
+  "caption": "Collapse diagnostics on the held-out clips. feature_std near 0 with mean_cosine near 1 means the horizon numbers are measuring a dead representation.",
+  "label": "tab:collapse"
+}

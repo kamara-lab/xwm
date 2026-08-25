@@ -195,6 +195,7 @@ nav:
   - Guides:
       - Training: guides/training.md
       - Robotics: guides/robotics.md
+      - Datasets: guides/datasets.md
       - Rendering: guides/rendering.md
       - Figures and tables: guides/figures.md
       - Running on GPU: guides/gpu.md
@@ -214,6 +215,7 @@ nav:
       - xwm.training: reference/training.md
       - xwm.envs: reference/envs.md
       - xwm.data: reference/data.md
+      - xwm.datasets: reference/datasets.md
       - xwm.metrics: reference/metrics.md
       - xwm.plots: reference/plots.md
       - xwm.tools: reference/tools.md
