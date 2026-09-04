@@ -52,6 +52,10 @@ __all__ = ["info", "iter_episodes", "load"]
 
 #: Column prefixes that are proprioception rather than pixels or bookkeeping.
 _STATE_PREFIX = "observation.state"
+#: Columns describing the *scene* rather than the robot -- object keypoints,
+#: for instance. Push-T's block pose lives here and nowhere else, so dropping
+#: it would leave the dataset with no ground truth for the thing being pushed.
+_POSITION_PREFIX = "observation.environment_state"
 _BOOKKEEPING = frozenset(
     {"index", "frame_index", "episode_index", "task_index", "timestamp", "next.done", "next.reward"}
 )
@@ -243,8 +247,9 @@ def iter_episodes(
             an optional argument in practice.
         resize, dtype: passed to :func:`~xwm.datasets.spec.to_frames`.
 
-    Yields dicts with ``video`` and/or ``state`` (``T`` entries), ``action``
-    (``T - 1``), ``reward`` where the dataset has one, and ``task``.
+    Yields dicts with ``video`` and/or ``state`` (``T`` entries), ``position``
+    where the dataset records scene state (``observation.environment_state``),
+    ``action`` (``T - 1``), ``reward`` where the dataset has one, and ``task``.
     """
     if observation not in ("video", "state", "both"):
         raise ValueError(f"observation must be 'video', 'state' or 'both', got {observation!r}")
@@ -272,6 +277,11 @@ def iter_episodes(
         k
         for k in features
         if k.startswith(_STATE_PREFIX) and features[k].get("dtype") not in ("video", "image")
+    )
+    position_keys = sorted(
+        k
+        for k in features
+        if k.startswith(_POSITION_PREFIX) and features[k].get("dtype") not in ("video", "image")
     )
 
     records = _episode_records(where, meta)
@@ -341,6 +351,14 @@ def iter_episodes(
                     vectors.append(value.reshape(value.shape[0], -1))
             if vectors:
                 episode["state"] = np.concatenate(vectors, axis=-1)
+        if observation in ("state", "both") and position_keys:
+            vectors = []
+            for key in position_keys:
+                if key in columns:
+                    value = np.asarray(rows.column(key).to_pylist(), np.float32)
+                    vectors.append(value.reshape(value.shape[0], -1))
+            if vectors:
+                episode["position"] = np.concatenate(vectors, axis=-1)
 
         # A decoded video and a parquet slice can disagree by a frame at the
         # edges of a span. Trim to the shortest rather than trusting either.

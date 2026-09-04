@@ -87,6 +87,12 @@ jobs:
           python -c "import xwm; print(xwm.__version__); print(xwm.families.available())"
           python -c "import xwm; print(xwm.envs.which_backends())"
           python -c "import xwm; print(len(xwm.datasets.available()), 'datasets'); print(xwm.datasets.which_readers())"
+          python -c "import xwm; print(xwm.tasks.available())"
+          # The console script and the whole benchmark protocol must work on a
+          # bare install: the synthetic tasks exist so that they can.
+          python -c "from xwm.cli import main; raise SystemExit(main(['tasks', 'list']))"
+          python -c "from xwm.cli import main; raise SystemExit(main(['doctor']))"
+          xwm models list
 
   docs:
     name: Docs build

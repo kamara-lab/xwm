@@ -358,3 +358,23 @@ def test_state_dim_and_agents_line_up_for_a_robot(key):
     z = agent.encode(jnp.asarray(env.state_observation()))
     assert z.shape == (32,)
     assert agent.act(jnp.asarray(env.state_observation())).shape == (env.action_dim,)
+
+
+def test_muzero_dynamics_fn_agrees_with_its_search_closure(key):
+    """The two spellings of MuZero's dynamics must not drift apart.
+
+    ``recurrent`` is what MCTS calls and returns a reward alongside the latent;
+    ``dynamics_fn`` is the ``(z, a) -> z'`` closure every planner and the
+    goal-conditioned evaluator call. They are the same transition, so a change
+    to one that misses the other has to fail here.
+    """
+    model = xwm.families.muzero.muzero(
+        n_actions=5, observation="state", state_dim=6, latent_dim=32, hidden_dim=32, key=key
+    )
+    z = model.encode(jr.normal(key, (6,)))
+    step = model.dynamics_fn()
+    recurrent, _ = model.search_fns()
+    for action in range(5):
+        assert jnp.allclose(step(z, jnp.int32(action)), recurrent(z, jnp.int32(action))[0])
+    # A one-hot vector is the same action as its index.
+    assert jnp.allclose(step(z, jnp.int32(2)), step(z, jnp.eye(5)[2]))

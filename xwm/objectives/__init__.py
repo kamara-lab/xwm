@@ -21,6 +21,7 @@ from .regularizers import (
     vicreg,
 )
 from .sigreg import (
+    Quadrature,
     Statistic,
     cramer_von_mises,
     epps_pulley,
@@ -30,6 +31,7 @@ from .sigreg import (
 
 __all__ = [
     "LossKind",
+    "Quadrature",
     "Statistic",
     "covariance_loss",
     "cramer_von_mises",

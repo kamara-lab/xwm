@@ -53,11 +53,13 @@ def goal_cost(
     terminal_only: bool = False,
     action_penalty: float = 0.0,
     discount: float = 1.0,
+    readout: Callable[[Array], Array] | None = None,
 ) -> CostFn:
     """Drive the latent state toward ``z_goal``.
 
     Args:
-        z_goal: target latent, same shape as the rollout states.
+        z_goal: target latent, same shape as ``readout(z)`` -- or as the rollout
+            states themselves when there is no readout.
         kind: distance to use.
         horizon: needed only when ``terminal_only`` is set, to know which step
             is terminal.
@@ -66,12 +68,18 @@ def goal_cost(
             which is usually what you want and is much better conditioned.
         action_penalty: weight on ``mean(a ** 2)``, discouraging thrash.
         discount: per-step multiplier; ``< 1`` prefers reaching the goal sooner.
+        readout: applied to ``z`` before the distance. A model whose planning
+            state is a window of several frames (see
+            :class:`xwm.core.types.Plannable`) passes its ``readout`` here so
+            only the newest frame is compared and the stale context is not
+            charged for failing to move.
     """
     if terminal_only and horizon is None:
         raise ValueError("terminal_only requires horizon")
 
     def cost(z: Array, a: Array, t: Array) -> Array:
-        distance = latent_distance(z, z_goal, kind)
+        z_now = z if readout is None else readout(z)
+        distance = latent_distance(z_now, z_goal, kind)
         if terminal_only:
             distance = jnp.where(t == horizon - 1, distance, 0.0)
         else:

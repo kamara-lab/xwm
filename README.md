@@ -96,8 +96,11 @@ They are complementary rather than competing. JEPA needs no reward, so it can pr
 | `xwm.families` | `jepa`, `tdmpc2`, `muzero`, and a registry |
 | `xwm.planning` | CEM, MPPI, gradient planning, MPC, MCTS, latent costs |
 | `xwm.training` | `Trainer`, schedules, `TrainState`, `ReplayBuffer` |
-| `xwm.envs` | a Franka FR3 arm in [Newton](https://github.com/newton-physics/newton) |
-| `xwm.data` | batch streams and a synthetic controllable world |
+| `xwm.envs` | a Franka FR3 arm in [Newton](https://github.com/newton-physics/newton), and the `Env` protocol |
+| `xwm.data` | batch streams and synthetic controllable worlds |
+| `xwm.tasks` | benchmark tasks: dataset + environment + metric |
+| `xwm.bench` | goal-reaching evaluation under a step budget |
+| `xwm.config` | experiment configs, TOML files and overrides |
 | `xwm.metrics` | probes and collapse diagnostics |
 | `xwm.plots` | figures, GIFs, JSON/LaTeX tables |
 | `xwm.tools` | checkpointing, model summaries |
@@ -240,6 +243,46 @@ trainer.n_trainable == model.dynamics.n_params   # the encoder gets no optimizer
 ```
 
 Training mixes **teacher forcing** (one step from ground-truth latents — a dense signal) with **rollout** (the full horizon from a single latent, the model consuming its own predictions — the only term that penalises compounding error).
+
+## Benchmark
+
+One protocol, so two world models can be compared. Reset the environment to a
+state a held-out recording visited, show the model -- as an *observation* -- a
+state that recording reached later, and give its planner a fixed budget of
+environment steps. Success is a ground-truth predicate on simulator state the
+model never sees.
+
+```bash
+xwm tasks list                              # what can be run
+xwm train configs/pusht/jepa.toml --eval    # train, then measure
+xwm eval runs/jepa-3afec466e5a2             # measure again, or differently
+```
+
+```
+ policy  success  gap closed  final dist  best dist  steps  seconds
+planner    0.000       0.012       0.283      0.216      -   71.900
+ replay    1.000       0.125       0.233      0.000  5.250    0.090
+   noop    0.000       0.002       0.309      0.309      -    0.090
+ random    0.000       0.029       0.305      0.287      -    0.090
+```
+
+Three baselines run through the same loop on the same instances, because a
+success rate without its floor is unreadable. **Read `replay` first**: it
+executes the demonstrator's own recorded actions, so it should succeed almost
+always -- and when it does not, the environment is not being reset faithfully
+and no model number from that task means anything yet.
+
+| module | contents |
+| --- | --- |
+| `xwm.tasks` | a task: dataset + environment + metric, and the frameskip, resolution, goal offset and budget written down once |
+| `xwm.bench` | instance sampling, the control loop, the four policies, the results schema |
+| `xwm.config` | frozen dataclasses, TOML files, `key.path=value` overrides |
+
+See **[docs/guides/benchmark.md](docs/guides/benchmark.md)** for why the goal
+comes from a recording, why actions are grouped rather than repeated, and what
+`replay` is protecting you from; **[docs/guides/metrics.md](docs/guides/metrics.md)**
+defines every number above, with equations — including the two that are
+misleading on their own.
 
 ## Training
 

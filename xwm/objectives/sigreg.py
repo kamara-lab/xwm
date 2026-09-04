@@ -51,6 +51,7 @@ import numpy as np
 from ..core.types import Array, PRNGKey
 
 Statistic = Literal["epps_pulley", "cramer_von_mises"]
+Quadrature = Literal["gauss_hermite", "trapezoid"]
 
 
 def random_directions(key: PRNGKey, dim: int, n_proj: int) -> Array:
@@ -77,19 +78,63 @@ def _quadrature_np(n_nodes: int, sigma: float) -> tuple[np.ndarray, np.ndarray]:
     return sigma * np.sqrt(2.0) * x, w / w.sum()
 
 
-def _quadrature(n_nodes: int, sigma: float) -> tuple[Array, Array]:
-    t, w = _quadrature_np(n_nodes, sigma)
+@lru_cache(maxsize=16)
+def _trapezoid_np(n_nodes: int, sigma: float, t_max: float) -> tuple[np.ndarray, np.ndarray]:
+    """Trapezoid nodes/weights on ``[0, t_max]`` for the same integral.
+
+    The integrand is even in ``t``, so integrating the half-line and doubling
+    the interior weights covers ``[-t_max, t_max]``. The weights are left
+    **unnormalised** -- they sum to ``~sqrt(2 pi)`` -- because that is the
+    convention the published SIGReg weights were tuned under; see
+    :func:`epps_pulley`.
+    """
+    t = np.linspace(0.0, t_max, n_nodes)
+    dt = t_max / (n_nodes - 1)
+    w = np.full(n_nodes, 2.0 * dt)
+    w[0] = w[-1] = dt
+    return t, w * np.exp(-(t**2) / (2.0 * sigma**2))
+
+
+def _quadrature(
+    n_nodes: int,
+    sigma: float,
+    quadrature: Quadrature = "gauss_hermite",
+    t_max: float = 3.0,
+) -> tuple[Array, Array]:
+    if quadrature == "gauss_hermite":
+        t, w = _quadrature_np(n_nodes, sigma)
+    elif quadrature == "trapezoid":
+        t, w = _trapezoid_np(n_nodes, sigma, t_max)
+    else:
+        raise ValueError(f"unknown quadrature {quadrature!r}")
     return jnp.asarray(t, jnp.float32), jnp.asarray(w, jnp.float32)
 
 
-def epps_pulley(u: Array, *, n_nodes: int = 32, sigma: float = 1.0) -> Array:
+def epps_pulley(
+    u: Array,
+    *,
+    n_nodes: int = 32,
+    sigma: float = 1.0,
+    quadrature: Quadrature = "gauss_hermite",
+    t_max: float = 3.0,
+) -> Array:
     """Characteristic-function distance from ``u`` to ``N(0, 1)``.
 
     Args:
         u: ``(n, P)`` -- ``P`` independent 1-D samples of size ``n``.
         n_nodes: quadrature nodes; 32 is ample for so smooth an integrand.
+            The LeJEPA-derived models call this the number of *knots* and use 17.
         sigma: width of the quadrature weight, i.e. which frequencies the test
             emphasises. Larger values probe finer structure in the tails.
+        quadrature: ``"gauss_hermite"`` places nodes at ``sigma*sqrt(2)*x_i``
+            with weights normalised to sum to one, so the statistic estimates
+            ``E_{t ~ N(0, sigma^2)}[err(t)]`` and its scale does not depend on
+            ``n_nodes``. ``"trapezoid"`` uses an evenly spaced grid on
+            ``[0, t_max]`` with *unnormalised* weights, estimating the integral
+            ``int err(t) exp(-t^2 / 2) dt`` itself. The two differ by a factor of
+            ``sqrt(2 pi) ~ 2.5066``, which is why a published ``reg_weight`` only
+            means what it says under the rule it was tuned with.
+        t_max: upper limit of the trapezoid grid; ignored otherwise.
 
     Returns:
         ``(P,)`` non-negative statistics, zero iff the empirical characteristic
@@ -101,7 +146,7 @@ def epps_pulley(u: Array, *, n_nodes: int = 32, sigma: float = 1.0) -> Array:
     hundreds of megabytes for a term that is only a scalar penalty. Scanning
     keeps the footprint at ``n * P``.
     """
-    t, w = _quadrature(n_nodes, sigma)
+    t, w = _quadrature(n_nodes, sigma, quadrature, t_max)
 
     def node(_, tw):
         t_k, w_k = tw
@@ -130,6 +175,33 @@ def cramer_von_mises(u: Array) -> Array:
     return jnp.sum((cdf - ranks[:, None]) ** 2, axis=0) / n + 1.0 / (12.0 * n**2)
 
 
+def _sigreg_one(
+    z: Array,
+    key: PRNGKey,
+    *,
+    n_proj: int,
+    statistic: Statistic,
+    n_nodes: int,
+    sigma: float,
+    center: bool,
+    quadrature: Quadrature,
+    t_max: float,
+    scale_by_n: bool,
+) -> Array:
+    """One pool of samples, one statistic. See :func:`sigreg`."""
+    z = z.reshape(-1, z.shape[-1])
+    if center:
+        z = z - jnp.mean(z, axis=0, keepdims=True)
+    u = z @ random_directions(key, z.shape[-1], n_proj)  # (n, n_proj)
+    if statistic == "epps_pulley":
+        stats = epps_pulley(u, n_nodes=n_nodes, sigma=sigma, quadrature=quadrature, t_max=t_max)
+    elif statistic == "cramer_von_mises":
+        stats = cramer_von_mises(u)
+    else:
+        raise ValueError(f"unknown statistic {statistic!r}")
+    return jnp.mean(stats) * (u.shape[0] if scale_by_n else 1.0)
+
+
 def sigreg(
     z: Array,
     key: PRNGKey,
@@ -139,6 +211,10 @@ def sigreg(
     n_nodes: int = 32,
     sigma: float = 1.0,
     center: bool = False,
+    quadrature: Quadrature = "gauss_hermite",
+    t_max: float = 3.0,
+    scale_by_n: bool = False,
+    axis: int | None = None,
 ) -> Array:
     """Sketched isotropic-Gaussian regularizer for a batch of embeddings.
 
@@ -150,21 +226,41 @@ def sigreg(
             training rather than only a fixed subspace.
         n_proj: number of random directions.
         statistic: which goodness-of-fit test to use.
-        n_nodes, sigma: quadrature settings for ``"epps_pulley"``.
+        n_nodes, sigma, quadrature, t_max: quadrature settings for
+            ``"epps_pulley"``. The defaults are xwm's; the published
+            LeJEPA-family weights assume ``n_nodes=17, quadrature="trapezoid",
+            scale_by_n=True``.
         center: subtract the batch mean before testing. Off by default,
             because driving the mean to zero is part of the job.
+        scale_by_n: multiply by the number of samples entering each empirical
+            characteristic function -- the classic ``n * omega^2`` normalisation,
+            under which the statistic has a fixed asymptotic distribution.
+            Off by default because it makes the penalty's scale depend on the
+            batch size; on when matching a published ``reg_weight``.
+        axis: compute an independent statistic for each index along this axis
+            and average, *sharing the projection directions*. ``axis=1`` on a
+            ``(B, T, D)`` tensor asks "is each timestep's distribution
+            isotropic?", which is what the LeJEPA-family world models do;
+            ``None`` pools every leading axis, which is a stronger claim and
+            conflates it with "the union over time is isotropic".
 
     Returns:
         A scalar, minimised when the embeddings look isotropic Gaussian.
     """
-    z = z.reshape(-1, z.shape[-1])
-    if center:
-        z = z - jnp.mean(z, axis=0, keepdims=True)
-    u = z @ random_directions(key, z.shape[-1], n_proj)  # (n, n_proj)
-    if statistic == "epps_pulley":
-        stats = epps_pulley(u, n_nodes=n_nodes, sigma=sigma)
-    elif statistic == "cramer_von_mises":
-        stats = cramer_von_mises(u)
-    else:
-        raise ValueError(f"unknown statistic {statistic!r}")
-    return jnp.mean(stats)
+    settings = dict(
+        n_proj=n_proj,
+        statistic=statistic,
+        n_nodes=n_nodes,
+        sigma=sigma,
+        center=center,
+        quadrature=quadrature,
+        t_max=t_max,
+        scale_by_n=scale_by_n,
+    )
+    if axis is None:
+        return _sigreg_one(z, key, **settings)
+    # One statistic per slice, with the *same* key: the directions must be
+    # shared, or the per-slice statistics are not comparable and their mean is
+    # noisier than it needs to be.
+    sliced = jnp.moveaxis(z, axis, 0)
+    return jnp.mean(jax.vmap(lambda zi: _sigreg_one(zi, key, **settings))(sliced))

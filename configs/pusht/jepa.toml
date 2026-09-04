@@ -1,0 +1,19 @@
+# An action-conditioned JEPA on the synthetic pusher, from pixels.
+extends = "../_base/synthetic.toml"
+name = "jepa"
+
+[model]
+name = "jepa/action"
+
+[model.kwargs]
+size = "tiny"
+patch_size = 8
+# The V-JEPA 2-AC recipe, and the reason `collapse` stays at "none": with the
+# encoder fixed the prediction targets are fixed functions of the observations,
+# so the dynamics model has nothing to gain from degrading the representation.
+# Unfreezing it here without a regularizer collapses -- measured on this task,
+# latent_std falls 0.172 -> 0.007 while the loss falls two orders of magnitude.
+freeze_encoder = true
+
+[train]
+steps = 3000

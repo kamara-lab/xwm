@@ -6,6 +6,110 @@ least one records a smoke run at the laptop defaults, and says so, because a
 labelled negative result beats a quiet omission. Where a claim was overturned by
 a later run, both are kept.
 
+## The benchmark's floors caught a task that measured nothing
+
+The first time the goal-reaching protocol ran end to end on the synthetic
+pushing task, `noop` and `random` both scored **100%**. Nothing was wrong with
+the planner, the model or the loop: the instances were trivial.
+
+Evaluation instances are drawn from recordings -- a start frame, and a frame
+`goal_offset` steps later -- and the recordings were generated with the smoothed
+random actions `xwm.data.push_sequences` uses. In a contact task that
+demonstrator mostly misses:
+
+| goal offset (frames) | median puck displacement | fraction below the 0.08 success radius |
+| --- | --- | --- |
+| 4 | 0.000 | 0.97 |
+| 6 | 0.000 | 0.96 |
+| 12 | 0.000 | 0.94 |
+| 20 | 0.000 | 0.86 |
+
+The median is zero at every offset. The pusher wanders, never touches the puck,
+and a start and a goal drawn from such a window differ by nothing -- so doing
+nothing solves the instance, and the evaluation measures the sampler rather than
+the planner.
+
+Fixed at both levels, because both are real. The task now ships a scripted
+pusher (`xwm.tasks.synthetic.push_expert_actions`: get behind the puck, drive it
+at the goal) which raises the median displacement at offset 6 to **0.228**, well
+clear of the radius; and `sample_episodes` takes `min_distance`, so an instance
+whose goal is already satisfied cannot be drawn at all. The second matters
+independently of synthetic data: recorded corpora contain idle windows at the
+starts and ends of episodes, and any window in which the demonstrator was not
+touching the object has the same property.
+
+The general lesson is that the floors are not decoration. `noop` and `random`
+are the only things that distinguish "the planner solved it" from "there was
+nothing to solve", and they cost a fraction of the planner's runtime.
+
+## Goal reaching on the synthetic pusher
+
+The first end-to-end numbers from `xwm.bench`, at the laptop defaults in
+`configs/pusht/`: 32x32 observations, 8 evaluation instances, a 16-step budget,
+a goal 6 frames ahead, CEM with 256 samples over a horizon of 6. Success is the
+puck within 0.08 of where the demonstrator put it. **These measure the
+machinery, not any method** -- the budgets are minutes of laptop CPU, and no
+number here is comparable with a published Push-T result.
+
+| policy | success | gap closed | best distance |
+| --- | --- | --- | --- |
+| oracle (true state, true dynamics) | **1.00** | 0.93 | 0.03 |
+| `replay` (recorded actions) | **1.00** | 0.125 | 0.000 |
+| TD-MPC2, state, 3000 steps | 0.00 | **+0.086** | 0.275 |
+| `random` | 0.00 | +0.029 | 0.287 |
+| action-JEPA, pixels, 3000 steps | 0.00 | +0.012 | 0.216 |
+| `noop` | 0.00 | +0.002 | 0.309 |
+
+Three things are worth reading off it.
+
+**The loop is correct.** A model whose latent is the true simulator state and
+whose dynamics are the real world solves every instance. That is the control:
+any failure of the protocol itself -- the reset, the action scaling, the
+frameskip, the success predicate -- would show up here first, and it is a
+permanent test rather than a one-off check.
+
+**Reset fidelity is exact on this task**, so `replay` reaching the goal every
+time says the instances are solvable in the budget by the actions that defined
+them. On a simulator whose state vector does not fully determine it, this is the
+number that will not be 1.00, and it has to be checked before any model's score
+is read.
+
+**A learned model beats the floors, and only just.** TD-MPC2 over the 8-D state
+closes three times the gap `random` does and forty times `noop`, without
+reaching the goal in 16 steps. The pixel model does worse than random, and the
+reason is visible in the representation rather than the dynamics: its encoder is
+a *randomly initialised* frozen ViT, and held-out frames embed at a mean cosine
+similarity of 0.999, leaving the goal cost almost nothing to discriminate on. A
+planner cannot recover from a latent space in which every observation looks
+alike, however good the dynamics through it are. The stage-one pretraining that
+the two-stage recipe assumes is exactly what is missing.
+
+## Unfreezing the encoder without a regularizer collapses it, quietly
+
+Measured while choosing the defaults for `configs/pusht/jepa.toml`, and recorded
+because the loss says the opposite of what happened. Same task, same 800-3000
+steps, three settings of the action-conditioned JEPA:
+
+| setting | final loss | `latent_std` | `rankme` | mean cosine |
+| --- | --- | --- | --- | --- |
+| frozen encoder | 0.036 | 0.174 | 19.45 | 0.999 |
+| unfrozen, SIGReg | 0.041 | 0.904 | 3.90 | 0.495 |
+| unfrozen, no regularizer | **0.0003** | **0.007** | -- | -- |
+
+The setting with by far the lowest loss is the collapsed one. Its loss fell two
+orders of magnitude below the others while `latent_std` fell from 0.172 to
+0.007: the encoder learned to emit nearly the same vector for every observation,
+which its dynamics model then predicts perfectly. `ActionWorldModel`'s docstring
+already says `collapse="none"` is correct only with a frozen encoder; this is
+what ignoring it costs, and how little the loss curve shows.
+
+Worth noting in the other direction: the frozen random encoder has high
+effective rank (19.45) but nearly collinear embeddings (0.999), while SIGReg
+gives well-spread embeddings (0.495) at a much lower rank. The two diagnostics
+disagree, which is the argument `collapse_report` makes for reporting all of
+them -- `rankme` is computed after centring, so a large shared component is
+invisible to it.
+
 ## OVRTX path tracing does not run on a compute-only GPU container
 
 The Warp raytracer that produces observations casts one ray per pixel: hard

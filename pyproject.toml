@@ -76,6 +76,9 @@ docs = [
   "mkdocstrings[python]>=0.26",
 ]
 
+[project.scripts]
+xwm = "xwm.cli:main"
+
 [project.urls]
 Homepage = "https://kamara-lab.github.io/xwm/"
 Documentation = "https://kamara-lab.github.io/xwm/"
@@ -95,7 +98,7 @@ packages = ["xwm"]
 # A source distribution needs the package, the tests that specify its behaviour,
 # and the example scripts, so it lists those rather than excluding the rest.
 [tool.hatch.build.targets.sdist]
-only-include = ["xwm", "tests", "examples", "README.md", "pyproject.toml"]
+only-include = ["xwm", "tests", "examples", "configs", "README.md", "pyproject.toml"]
 exclude = ["examples/outputs"]
 
 [tool.pytest.ini_options]

@@ -1,0 +1,3 @@
+# `xwm.bench`
+
+::: xwm.bench

@@ -1,0 +1,38 @@
+# Shared settings for the dependency-free synthetic tasks.
+#
+# These exist to exercise the whole pipeline -- train, plan, evaluate, report --
+# in minutes and with nothing installed beyond the core library. A number
+# measured here is not comparable with a published Push-T result; what is being
+# checked is the machinery, not the method.
+#
+# Deliberately no [model] section. `extends` merges sections rather than
+# replacing them, so a model's kwargs in a shared base would leak into every
+# config that inherits it -- a JEPA's `size` reaching a TD-MPC2 constructor.
+# Model choice and model kwargs belong together, in one file.
+seed = 0
+output_dir = "runs"
+
+[task]
+name = "pusht/synthetic"
+
+[train]
+batch_size = 32
+learning_rate = 3e-4
+# history + horizon: five prediction steps, so a rollout term is a real
+# compounding-error signal rather than a duplicate of teacher forcing.
+clip_length = 6
+log_every = 50
+
+[eval]
+episodes = 8
+policy = ["planner", "noop", "random", "replay"]
+
+[eval.plan]
+horizon = 6
+receding_horizon = 1
+planner = "cem"
+
+[eval.plan.planner_options]
+n_samples = 256
+n_elites = 32
+n_iters = 4

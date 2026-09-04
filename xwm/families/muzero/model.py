@@ -43,6 +43,8 @@ the heads here.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import equinox as eqx
 import jax
 import jax.numpy as jnp
@@ -180,6 +182,37 @@ class MuZero(WorldModel):
         """Eval-mode ``(recurrent, predict)`` closures for :class:`~xwm.planning.MCTS`."""
         model = self.eval_mode()
         return model.recurrent, model.predict
+
+    # -- the planning contract (xwm.core.types.Plannable) ---------------------
+    # MuZero's own names come from the paper -- representation, dynamics,
+    # prediction -- and MCTS wants ``recurrent``, which returns the reward too.
+    # These two aliases are what lets the goal-conditioned evaluator in
+    # :mod:`xwm.bench` drive a MuZero exactly as it drives a JEPA: encode a goal
+    # frame, roll the latent forward, compare. The reward and value heads it was
+    # trained with simply go unused on that objective.
+    def encode(self, observation: Array, *, key: PRNGKey | None = None) -> Array:
+        """Alias for :meth:`represent`, spelled the way every other family spells it."""
+        return self.represent(observation, key=key)
+
+    def dynamics_fn(self, *, key: PRNGKey | None = None) -> Callable[[Array, Array], Array]:
+        """A plain ``(z, a) -> z'`` closure, dropping the reward :meth:`recurrent` returns.
+
+        ``a`` is a one-hot vector or an action index; both reach the same
+        dynamics call, so a continuous planner relaxing over the simplex and a
+        tree search over indices can share this.
+        """
+        del key
+        model = self.eval_mode()
+
+        def step(z: Array, action: Array) -> Array:
+            one_hot = (
+                action
+                if jnp.ndim(action) and action.shape[-1] == model.n_actions
+                else jax.nn.one_hot(action, model.n_actions)
+            )
+            return model.dynamics(z, one_hot)
+
+        return step
 
     # -- training ------------------------------------------------------------
     def loss(
