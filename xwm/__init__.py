@@ -17,7 +17,7 @@ The library separates *generic machinery* from *families* from *use*:
 :mod:`xwm.heads`              reward, value, policy, Q-ensemble
 :mod:`xwm.masking`            what a JEPA predicts: blocks, tubes, time splits
 :mod:`xwm.objectives`         losses: latent prediction, SIGReg, TD, categorical
-:mod:`xwm.families`           **jepa**, **tdmpc2**, **muzero**
+:mod:`xwm.families`           **jepa**, **dinowm**, **tdmpc2**, **muzero**
 :mod:`xwm.planning`           CEM, MPPI, gradient, MPC, MCTS
 :mod:`xwm.training`           one trainer, schedules, replay buffer
 :mod:`xwm.envs`               simulated robots (a Franka arm in Newton)
@@ -32,9 +32,9 @@ The library separates *generic machinery* from *families* from *use*:
 :mod:`xwm.tools`              checkpointing and model summaries
 ============================  ===================================================
 
-The three families differ only in what trains the latent space -- its own future
-embeddings (JEPA), reward and TD value (TD-MPC2), or search-improved targets
-(MuZero). They share encoders, dynamics and planners.
+The families differ only in what trains the latent space -- its own future
+embeddings (JEPA and DINO-WM), reward and TD value (TD-MPC2), or search-improved
+targets (MuZero). They share encoders, dynamics and planners.
 
 Conventions
 -----------

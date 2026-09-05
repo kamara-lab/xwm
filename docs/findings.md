@@ -110,6 +110,190 @@ disagree, which is the argument `collapse_report` makes for reporting all of
 them -- `rankme` is computed after centring, so a large shared component is
 invisible to it.
 
+## Two ways a pooled JEPA latent dies, and only one of them looks like collapse
+
+`jepa/lewm` trains its encoder through its own prediction targets, which is the
+configuration that admits the trivial solution, and SIGReg is the only thing
+forbidding it. Getting that to work took two fixes, and the second was found
+only because the first looked like it had settled the matter.
+
+### The layer norm
+
+The first implementation collapsed outright. Over 600 steps on `PushWorld`,
+`latent_std` fell to 0.003 and `loss_reg` sat at 0.41 -- which is almost exactly
+the value the SIGReg statistic takes on a point mass (measured separately: 0.434
+for a constant batch, 0.0035 for an isotropic one). The regularizer was neither
+broken nor silent. It reported the collapse for the entire run and could not
+prevent it.
+
+The cause was a substitution that looked harmless. LeWorldModel projects each
+pooled frame embedding through a linear layer and a **BatchNorm**; this library
+has no BatchNorm, so the first version used the parameter-free
+`layer_normalize`, on the reasoning that SIGReg constrains the scale anyway. The
+two normalise different axes. BatchNorm constrains variance *across the batch*,
+which is the quantity that collapses. Layer normalisation constrains each sample
+*across its features*, which projects every embedding onto a sphere -- and a
+sphere still has one point that every frame can map to.
+
+| projector | `reg_weight` | `latent_std` | `loss_prediction` | `loss_reg` |
+| --- | --- | --- | --- | --- |
+| linear + layer norm | 0.1 | **0.0029** | 0.00000 | 0.409 |
+| linear + layer norm | 1.0 | **0.0046** | 0.00001 | 0.407 |
+| linear + layer norm | 20.0 | 0.947 | 0.376 | 0.038 |
+| linear only | 0.1 | 0.764 | 0.00005 | 0.053 |
+| linear only | 1.0 | 0.791 | 0.005 | 0.038 |
+| linear only | 20.0 | 0.875 | 0.115 | 0.025 |
+
+Removing the layer norm fixed it, and at the paper's own `reg_weight = 0.1`.
+That is the version that ships.
+
+### The scale, which the same fix did not settle
+
+It was then run on the actual benchmark task -- the scripted pusher, a cosine
+learning-rate schedule, 3000 steps -- and after training `latent_std` was
+**0.0003**. On the face of it the same failure had returned.
+
+It had not. The full diagnostic set says so:
+
+| statistic | trained `jepa/lewm` | reading |
+| --- | --- | --- |
+| `rankme` | 20.9 of 192 | a real effective rank |
+| `mean_cosine` | 0.273 | embeddings point in different directions |
+| `feature_std` | 0.00018 | but the whole space has shrunk |
+
+Mean pairwise distance was 0.0034 against a mean norm of 0.0030, so the
+embeddings were *relatively* as spread out as ever. Nothing had collapsed
+together; everything had shrunk toward the origin. The prediction loss is an L2
+between latents, so scaling every embedding by `s` scales the loss by `s²` --
+free progress that no amount of directional structure resists. This is what the
+paper's BatchNorm rules out by construction, and what SIGReg has to be paid to
+do instead.
+
+Eight hundred steps on the benchmark task, sweeping the one knob:
+
+| `reg_weight` | `latent_std` | `loss_prediction` | `loss_reg` |
+| --- | --- | --- | --- |
+| 0.1 (the paper's) | **0.0006** | 0.000000 | 0.163 |
+| 1.0 | **0.0022** | 0.000001 | 0.163 |
+| 10.0 | 0.848 | 0.024 | 0.057 |
+| 50.0 | 0.882 | 0.152 | 0.039 |
+
+`configs/pusht/lewm.toml` therefore uses **10.0**, not 0.1. Fifty holds the
+scale no better and buys it with a prediction loss six times larger.
+
+Three things worth keeping from this.
+
+**`latent_std` and `rankme` disagreed, and both were right.** One saw a dead
+model, the other a healthy one, and the truth was a third thing: intact
+structure at a vanishing scale. This is the argument `collapse_report` makes for
+reporting all four numbers, and here it was the difference between "the fix
+failed" and "the fix worked and a second, unrelated failure is in the way".
+
+**The first fix was verified on the wrong data.** `PushWorld` with random
+actions and a constant learning rate is not the benchmark task with a scripted
+demonstrator and a decaying one, and 0.1 survives the first and not the second.
+A negative result on a proxy is worth much less than it looks.
+
+**One knob still has to be turned.** The paper's selling point is that six loss
+weights become one, and that is real. It does not mean the one is universal.
+
+`tests/test_autoregressive.py::test_lewm_does_not_collapse_on_a_real_world` is
+the regression test for the layer norm, and it trains on a real world rather
+than on noise -- collapse needs structure to collapse away from.
+
+## The windowed models on the synthetic pusher
+
+The first end-to-end numbers for `jepa/lewm`, `jepa/delta` and `dinowm`, at the
+laptop defaults in `configs/pusht/`: 32x32 observations (28 for DINO-WM, the
+nearest multiple of 14), three frames of context, 3000 steps, 8 evaluation
+instances, a 16-step budget, a goal 6 frames ahead, CEM with 256 samples over a
+horizon of 6. **These measure the machinery, not the methods.** No model solves
+the task, `replay` is the only policy that does, and every model number sits in
+or near the band between the two floors.
+
+| model | success | gap closed | best distance | planning | params |
+| --- | --- | --- | --- | --- | --- |
+| `replay` (recorded actions) | **1.00** | +0.125 | 0.000 | -- | -- |
+| `random` | 0.00 | +0.029 | 0.287 | -- | -- |
+| `noop` | 0.00 | +0.002 | 0.309 | -- | -- |
+| `jepa/lewm`, `reg_weight` 0.1 | 0.125 | **+0.217** | 0.238 | 55 s | 6.1 M |
+| `jepa/lewm`, `reg_weight` 10 | 0.00 | -0.049 | 0.288 | 55 s | 6.1 M |
+| `jepa/delta` | 0.00 | +0.006 | 0.265 | 80 s | 6.2 M |
+| `dinowm` (frozen DINOv2-small) | 0.00 | +0.021 | 0.274 | **532 s** | 33.2 M |
+
+Three things can be read off it, and a fourth cannot.
+
+**The token count is the planning cost, and it is an order of magnitude.**
+DINO-WM plans in 532 seconds where the pooled models take 55 and 80, on the same
+instances with the same budget and planner. At this resolution its window is 48
+tokens against their 3; at 224 pixels it would be 768 against 3. That is the
+trade its patch-level latent makes, and it is the concrete version of
+LeWorldModel's claim to plan up to 48x faster.
+
+**Only `dinowm` and `delta` trained to a healthy latent by default.** Final
+`latent_std` was 0.896 for DINO-WM (whose encoder is frozen and cannot move) and
+0.520 for Delta-JEPA (whose action decoder holds the latent open). LeWorldModel
+needed `reg_weight` raised from the paper's 0.1 to 10 to reach 1.020 -- see the
+previous section for what was wrong and how it was found.
+
+**Raising it fixed the representation and did not help the planner.** Same
+model, same data, same 3000 steps, one number different:
+
+| `reg_weight` | `latent_std` | `loss_reg` | `loss_prediction` | gap closed |
+| --- | --- | --- | --- | --- |
+| 0.1 | 0.0003 | 0.163 | 0.000 | +0.217 |
+| 10 | **1.020** | **0.027** | 0.010 | -0.049 |
+
+The representation is unambiguously better at 10: `loss_reg` of 0.027 is what
+the SIGReg statistic reads on an isotropic batch, against 0.163 for a space
+collapsed toward the origin. The planning number went the other way. Both facts
+are real and neither is surprising on reflection -- CEM ranks candidates by
+*relative* cost, so uniformly shrinking a latent space leaves every ranking it
+produces unchanged, and a healthier latent is also a harder one to predict
+(prediction loss rose tenfold).
+
+**What cannot be read off it is a ranking of the methods.** Eight episodes, no
+successes outside `replay`, and a spread of gap-closed values (-0.049 to +0.217)
+wider than the gap between the `noop` and `random` floors. The one model that
+scores well has a dead latent. Treating any of this as evidence that one of
+these architectures beats another would be reading noise; what it establishes is
+that all three train, plan and evaluate through the same protocol, and what a
+real comparison would cost.
+
+## Two "nearly right" conversions of DINOv2, and what they cost
+
+`xwm.encoders.dinov2` reads the published safetensors with numpy and places the
+tensors into Equinox modules; there is no PyTorch on the path. The risk in doing
+that is not a crash. Every plausible bug in a vision-transformer conversion
+produces finite, well-behaved features that are simply a *different encoder*
+from the one everyone else compares against, and no statistic of the output
+reveals it. So the conversion was checked against features recorded from the
+reference implementation, and two bugs survived until that check:
+
+| version | cosine vs reference, 224px | max abs difference |
+| --- | --- | --- |
+| first working version | 0.9929 | 3.45 |
+| with PyTorch's bicubic kernel | 0.99999 | 0.048 |
+| with exact GELU as well | **0.99999988** | 0.00008 |
+
+**"Bicubic" is not one filter.** `jax.image.resize(method="bicubic")` uses Keys'
+cubic convolution with `a = -0.5`; PyTorch's `F.interpolate` uses `a = -0.75`.
+DINOv2's position table is published for a 518-pixel input and has to be
+resampled to whatever grid you ask for, so this is on the path for every
+resolution except one. On a random table the two filters differ by 0.55 where
+the values span [0, 1] -- not a rounding difference.
+
+**"GELU" is not one function.** `jax.nn.gelu` defaults to `approximate=True`,
+the tanh approximation; PyTorch's `nn.GELU()` is exact. This one is small enough
+to pass for numerical noise, which is precisely why it needed a reference to
+find: it moves every feature slightly and nothing else at all.
+
+The residual 8e-5 is float32 accumulation over twelve blocks. The comparison
+test is gated behind `XWM_PRETRAINED_TESTS=1`; the offline tests check the
+pieces -- that the position table is resampled and not truncated, that a
+constant table survives interpolation, that every tensor in the checkpoint is
+consumed.
+
 ## OVRTX path tracing does not run on a compute-only GPU container
 
 The Warp raytracer that produces observations casts one ray per pixel: hard

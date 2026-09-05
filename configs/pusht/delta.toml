@@ -1,0 +1,26 @@
+# Delta-JEPA on the synthetic pusher: collapse prevented by decoding the action.
+#
+# Identical to lewm.toml except for the second loss term. Instead of asking that
+# embeddings be distributed isotropically, it asks that `a_t` be recoverable
+# from `z_{t+1} - z_t` -- so adjacent embeddings cannot coincide, and two
+# different pushes cannot produce the same latent displacement.
+extends = "../_base/synthetic.toml"
+name = "delta"
+
+[model]
+name = "jepa/delta"
+
+[model.kwargs]
+size = "tiny"
+patch_size = 8
+conditioning = "film"
+# 10.0 in the paper, 50.0 on Push-T. The term is a mean squared error over
+# actions in [-1, 1], so it is small in absolute terms and needs the weight.
+action_weight = 10.0
+
+[task.overrides]
+history = 3
+
+[train]
+clip_length = 4
+steps = 3000

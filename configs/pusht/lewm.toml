@@ -1,0 +1,37 @@
+# LeWorldModel on the synthetic pusher: end to end from pixels, two loss terms.
+#
+# The encoder is trained *through* its own prediction targets, which is the
+# configuration that collapses unless something forbids it. Here that is SIGReg
+# and nothing else -- no EMA teacher, no stop-gradient, no pretrained weights.
+# Watch `latent_std` in history.json: if it falls while the loss does, the
+# regularizer is too weak for this data, and `reg_weight` is the one knob there
+# is to turn. It was turned: see below.
+extends = "../_base/synthetic.toml"
+name = "lewm"
+
+[model]
+name = "jepa/lewm"
+
+[model.kwargs]
+size = "tiny"
+patch_size = 8
+conditioning = "film"
+# 0.1 in the paper; 10.0 measured here. Below 10 the latent *scale* collapses on
+# this task -- the prediction loss is an L2 between latents, so shrinking them
+# all toward zero minimises it for free, and a weaker penalty cannot pull the
+# scale back before the cosine schedule decays the learning rate. Directions
+# survive either way, so watch `latent_std`, not `rankme`. See docs/findings.md.
+reg_weight = 10.0
+# 1024 projections in the paper. Fewer is a noisier estimate of the same
+# statistic, not a different one, and this task's batches are small.
+n_proj = 256
+
+[task.overrides]
+# Three frames of context. The pusher's velocity is not in any single frame, and
+# a Markov model on this task has to infer contact from position alone.
+history = 3
+
+[train]
+# history + 1: one window per clip, which is what the causal pass consumes.
+clip_length = 4
+steps = 3000

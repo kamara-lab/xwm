@@ -55,6 +55,12 @@ data = [
   "h5py>=3.11",               # LIBERO and RoboMimic
   "pillow>=10.0",             # resizing, and LIBERO's JPEG-compressed frames
 ]
+# Published encoder weights (xwm.encoders.dinov2). Only the Hub client: the
+# checkpoints are safetensors, which xwm.tools reads with numpy, so this extra
+# does not drag in PyTorch to load a file.
+pretrained = [
+  "huggingface-hub>=0.26",
+]
 dev = [
   "pytest>=8.0",
   "matplotlib>=3.8",
