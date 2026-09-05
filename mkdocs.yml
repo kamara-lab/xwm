@@ -190,6 +190,8 @@ nav:
   - Models:
       - families/index.md
       - JEPA: families/jepa.md
+      - Autoregressive JEPA: families/lewm.md
+      - DINO-WM: families/dinowm.md
       - TD-MPC2: families/tdmpc2.md
       - MuZero: families/muzero.md
   - Guides:

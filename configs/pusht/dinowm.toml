@@ -1,0 +1,31 @@
+# DINO-WM on the synthetic pusher: dynamics on frozen DINOv2 patch features.
+#
+# The encoder is not trained here at all, and never saw this task -- so this is
+# the control for lewm.toml and delta.toml. If a general visual representation
+# plans as well as one learned on the task, the representation learning was not
+# what was doing the work.
+#
+# Needs `pip install "xwm[pretrained]"` and downloads DINOv2-small on first run.
+extends = "../_base/synthetic.toml"
+name = "dinowm"
+
+[model]
+name = "dinowm"
+
+[model.kwargs]
+size = "small"
+freeze_encoder = true
+conditioning = "concat"
+
+[task.overrides]
+history = 3
+# DINOv2 has 14-pixel patches, so the observation must be a multiple of 14. The
+# task renders at 32; 28 is the nearest multiple that does not upscale it.
+image_size = 28
+
+[train]
+clip_length = 4
+# Fewer steps than the from-scratch models: only the predictor is trained, and
+# 4 tokens per frame at this resolution is a small problem.
+steps = 2000
+batch_size = 16

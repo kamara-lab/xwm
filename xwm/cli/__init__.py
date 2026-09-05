@@ -202,7 +202,17 @@ def _cmd_doctor(args) -> int:
     report("render backends:", which_backends())
     report("simulators:", which_simulators())
     report("logging:", {"rerun (xwm.rerun)": xwm.rerun.available()})
+    report("pretrained encoders:", {"dinov2 (huggingface_hub)": _has("huggingface_hub")})
     return 0
+
+
+def _has(module: str) -> bool:
+    from importlib.util import find_spec
+
+    try:
+        return find_spec(module) is not None
+    except (ImportError, ValueError):  # pragma: no cover - broken installs
+        return False
 
 
 def which_simulators() -> dict[str, bool]:

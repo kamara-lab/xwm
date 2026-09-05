@@ -17,9 +17,11 @@ the ``keep`` argument's speedup comes from.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Literal
 
 import equinox as eqx
+import jax
 import jax.numpy as jnp
 import jax.random as jr
 
@@ -91,6 +93,7 @@ class VisionEncoder(Module):
         dropout: float = 0.0,
         drop_path: float = 0.0,
         layer_scale: float | None = None,
+        act: Callable[[Array], Array] = jax.nn.gelu,
         remat: bool = False,
     ):
         key = resolve_key(key)
@@ -110,6 +113,7 @@ class VisionEncoder(Module):
             drop_path=drop_path,
             layer_scale=layer_scale,
             rope=self.rope,
+            act=act,
             remat=remat,
         )
         self.embed_dim = dim

@@ -23,6 +23,13 @@ def build_task(config: ExperimentConfig):
     return tasks.create(config.task.name, **config.task.overrides)
 
 
+#: Families whose encoder takes images and has no state-vector variant.
+_VISION_ONLY = ("jepa/", "dinowm")
+
+#: Families that condition on a window of frames rather than one.
+_NEEDS_HISTORY = ("jepa/lewm", "jepa/delta", "dinowm")
+
+
 def model_kwargs(config: ExperimentConfig, task) -> dict[str, Any]:
     """The config's kwargs, plus everything the task determines.
 
@@ -38,7 +45,13 @@ def model_kwargs(config: ExperimentConfig, task) -> dict[str, Any]:
     else:
         injected["action_dim"] = spec.blocked_action_dim
 
-    vision_only = name.startswith("jepa/")
+    if name in _NEEDS_HISTORY:
+        # A windowed model's history is the task's, not a free parameter: the
+        # benchmark's Context and the predictor's temporal embedding have to
+        # agree, and TaskSpec.clip_length is derived from the same number.
+        injected["history"] = spec.history
+
+    vision_only = name.startswith(_VISION_ONLY)
     if "video" in spec.observation:
         size = spec.image_size if spec.image_size is not None else spec.native_size[0]
         injected["img_size"] = size if isinstance(size, int) else size[0]

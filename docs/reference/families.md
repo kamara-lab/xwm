@@ -1,6 +1,6 @@
 # xwm.families
 
-The three model families and a registry. Each family is a different answer to *what
+The four model families and a registry. Each family is a different answer to *what
 trains the latent space*; they share encoders, dynamics and planners. See
 [Models](../families/index.md) for the narrative version.
 
@@ -15,6 +15,10 @@ trains the latent space*; they share encoders, dynamics and planners. See
 ## xwm.families.jepa
 
 ::: xwm.families.jepa
+
+## xwm.families.dinowm
+
+::: xwm.families.dinowm
 
 ## xwm.families.tdmpc2
 

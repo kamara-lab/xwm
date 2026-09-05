@@ -1,19 +1,29 @@
 # Models
 
-Three families, one set of parts. They share encoders, latent dynamics and
+Four families, one set of parts. They share encoders, latent dynamics and
 planners; what separates them is **what signal trains the latent space**.
 
 | family | learning signal | reward? | actions | planner |
 | --- | --- | --- | --- | --- |
 | [`jepa`](jepa.md) | its own future embeddings | no | continuous | CEM / MPPI |
+| [`jepa` (windowed)](lewm.md) | its own future embeddings, end to end | no | continuous | CEM / MPPI |
+| [`dinowm`](dinowm.md) | its own future embeddings, frozen encoder | no | continuous | CEM / MPPI |
 | [`tdmpc2`](tdmpc2.md) | reward + TD value | yes | continuous | MPPI |
 | [`muzero`](muzero.md) | search-improved targets | yes | discrete | MCTS |
+
+The first three share a learning signal and differ in **where the representation
+comes from** -- learned in two stages, learned end to end, or not learned at all.
+That is the axis [`lewm.md`](lewm.md) and [`dinowm.md`](dinowm.md) are about.
 
 ## Choosing
 
 ```mermaid
 graph TD
-    A{Do you have a reward?} -->|no| B[jepa]
+    A{Do you have a reward?} -->|no| F{Does one frame<br/>determine the state?}
+    F -->|yes| B[jepa/action]
+    F -->|no| G{Train the encoder?}
+    G -->|"yes, end to end"| H[jepa/lewm<br/>jepa/delta]
+    G -->|"no, use DINOv2"| I[dinowm]
     A -->|yes| C{Are the actions discrete?}
     C -->|no| D[tdmpc2]
     C -->|yes| E[muzero]
@@ -73,8 +83,8 @@ For sweeps and config-driven experiments, build by name:
 
 ```python
 xwm.families.available()
-# ['jepa/action', 'jepa/image', 'jepa/image-lejepa', 'jepa/video',
-#  'jepa/video-lejepa', 'muzero', 'tdmpc2']
+# ['dinowm', 'jepa/action', 'jepa/delta', 'jepa/image', 'jepa/image-lejepa',
+#  'jepa/lewm', 'jepa/video', 'jepa/video-lejepa', 'muzero', 'tdmpc2']
 
 model = xwm.families.create("tdmpc2", action_dim=7, observation="state", state_dim=20)
 ```
@@ -84,7 +94,8 @@ you want, since they carry the type annotations and the docstrings.
 
 ## Observation types
 
-All three take either pixels or a state vector, through the same argument:
+The reward-driven families take either pixels or a state vector, through the same
+argument:
 
 === "State"
 

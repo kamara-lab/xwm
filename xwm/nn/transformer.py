@@ -157,6 +157,10 @@ class Transformer(Module):
         depth: number of blocks.
         drop_path: maximum stochastic-depth rate; rates increase linearly with
             depth, as in the ViT/DeiT recipe.
+        act: the MLP nonlinearity. The default is JAX's ``gelu``, which is the
+            *tanh approximation*; pass ``partial(jax.nn.gelu,
+            approximate=False)`` to match a checkpoint trained under PyTorch's
+            exact one (see :class:`xwm.encoders.DINOv2Encoder`).
         remat: wrap each block in :func:`jax.checkpoint`, trading recomputation
             for activation memory. Worth enabling for long video sequences.
     """
@@ -179,6 +183,7 @@ class Transformer(Module):
         drop_path: float = 0.0,
         layer_scale: float | None = None,
         rope: AxialRoPE | None = None,
+        act: Callable[[Array], Array] = jax.nn.gelu,
         final_norm: bool = True,
         remat: bool = False,
     ):
@@ -197,6 +202,7 @@ class Transformer(Module):
                 drop_path=rates[i],
                 layer_scale=layer_scale,
                 rope=rope,
+                act=act,
             )
             for i in range(depth)
         ]

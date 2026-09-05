@@ -8,7 +8,7 @@
   <a href="https://pypi.org/project/xwm/"><img alt="PyPI version" src="https://img.shields.io/pypi/v/xwm?style=flat-square&color=059669&labelColor=ffffff"></a>
   <a href="https://www.python.org/downloads/"><img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-059669?style=flat-square&labelColor=ffffff"></a>
   <a href="https://github.com/jax-ml/jax"><img alt="JAX" src="https://img.shields.io/badge/built%20on-JAX%20%20-059669?style=flat-square&labelColor=ffffff"></a>
-  <a href="#tests"><img alt="Tests" src="https://img.shields.io/badge/tests-520%20passing-059669?style=flat-square&labelColor=ffffff"></a>
+  <a href="#tests"><img alt="Tests" src="https://img.shields.io/badge/tests-565%20passing-059669?style=flat-square&labelColor=ffffff"></a>
   <a href="https://docs.astral.sh/ruff/"><img alt="Ruff" src="https://img.shields.io/badge/lint-ruff-059669?style=flat-square&labelColor=ffffff"></a>
   <a href="#license"><img alt="Apache 2.0" src="https://img.shields.io/badge/license-Apache--2.0-059669?style=flat-square&labelColor=ffffff"></a>
 </p>
@@ -33,6 +33,7 @@ uv add "xwm[plots]"            # figures, GIFs, tables
 uv add "xwm[newton]"           # the Franka robot environment
 uv add "xwm[data]"             # recorded datasets: DROID, LIBERO, OGBench, OXE
 uv add "xwm[rerun]"            # inspect a run in the Rerun viewer
+uv add "xwm[pretrained]"       # frozen DINOv2 features for DINO-WM
 ```
 
 Or work on it from a clone, where `uv.lock` pins the whole environment:
@@ -75,10 +76,33 @@ All three share the same encoders, latent dynamics and planners. What separates 
 | family | learning signal | reward? | planner |
 | --- | --- | --- | --- |
 | [`jepa`](xwm/families/jepa) | its own future embeddings | no | CEM / MPPI |
+| [`dinowm`](xwm/families/dinowm) | its own future embeddings, on frozen DINOv2 | no | CEM / MPPI |
 | [`tdmpc2`](xwm/families/tdmpc2) | reward + TD value | yes | MPPI |
 | [`muzero`](xwm/families/muzero) | search-improved targets | yes | MCTS |
 
 They are complementary rather than competing. JEPA needs no reward, so it can pretrain on passive video, abundant and unlabelled. TD-MPC2 and MuZero need interaction, but they learn a value function, so their planner can see past its own horizon. A JEPA encoder is a reasonable initialisation for either: `tdmpc2(encoder=pretrained)` is one argument.
+
+Within `jepa` there is a second axis, and it is the one the 2025-26 literature
+moved along: **where the representation comes from**. `jepa/action` is the
+V-JEPA 2-AC recipe -- pretrain, freeze, then learn dynamics. `jepa/lewm` and
+`jepa/delta` train the encoder *through* the prediction loss instead, over a
+window of frames rather than one. `dinowm` does not train it at all.
+
+| model | encoder | what stops it collapsing |
+| --- | --- | --- |
+| [`jepa/lewm`](docs/families/lewm.md) | ViT, from scratch | SIGReg: the embedding distribution must be isotropic |
+| [`jepa/delta`](docs/families/lewm.md) | ViT, from scratch | the action must be decodable from `z_{t+1} - z_t` |
+| [`dinowm`](docs/families/dinowm.md) | DINOv2, frozen | nothing can collapse; it cannot move |
+
+```python
+model = xwm.families.jepa.lewm(action_dim=2, img_size=64, patch_size=8)
+model = xwm.families.dinowm.dinowm(action_dim=7, img_size=224)   # needs xwm[pretrained]
+```
+
+These are the first models here whose planning state is a *window* of frames
+rather than a latent, which is what lets them represent velocity. The planners
+did not change: a `Window` is a pytree, and `goal_cost(goal, readout=model.readout)`
+compares against the newest frame.
 
 `xwm.families.available()` lists every registered model;
 `xwm.families.create(name, **kwargs)` builds one by name.
@@ -395,6 +419,10 @@ Every module carries a `References` block in its docstring naming the paper the 
 | TD-MPC2 | Hansen, Su & Wang, ICLR 2024 · [arXiv:2310.16828](https://arxiv.org/abs/2310.16828) |
 | TD-MPC | Hansen, Wang & Su, ICML 2022 · [arXiv:2203.04955](https://arxiv.org/abs/2203.04955) |
 | MuZero | Schrittwieser et al., Nature 2020 · [arXiv:1911.08265](https://arxiv.org/abs/1911.08265) |
+| DINO-WM | Zhou et al., ICML 2025 · [arXiv:2411.04983](https://arxiv.org/abs/2411.04983) |
+| DINOv2 | Oquab et al., TMLR 2024 · [arXiv:2304.07193](https://arxiv.org/abs/2304.07193) |
+| LeWorldModel | Maes et al., 2026 · [arXiv:2603.19312](https://arxiv.org/abs/2603.19312) |
+| Delta-JEPA | 2026 · [arXiv:2606.31232](https://arxiv.org/abs/2606.31232) |
 | Sampled MuZero | Hubert et al., ICML 2021 · [arXiv:2104.06303](https://arxiv.org/abs/2104.06303) |
 | VICReg | Bardes, Ponce & LeCun, ICLR 2022 · [arXiv:2105.04906](https://arxiv.org/abs/2105.04906) |
 

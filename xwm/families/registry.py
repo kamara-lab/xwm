@@ -46,6 +46,24 @@ def _jepa_action(**kw):
     return action_world_model(**kw)
 
 
+def _jepa_lewm(**kw):
+    from .jepa.autoregressive import lewm
+
+    return lewm(**kw)
+
+
+def _jepa_delta(**kw):
+    from .jepa.autoregressive import delta_jepa
+
+    return delta_jepa(**kw)
+
+
+def _dinowm(**kw):
+    from .dinowm.model import dinowm
+
+    return dinowm(**kw)
+
+
 def _tdmpc2(**kw):
     from .tdmpc2.model import tdmpc2
 
@@ -65,6 +83,9 @@ REGISTRY: dict[str, Callable[..., WorldModel]] = {
     "jepa/video": _jepa_video,
     "jepa/video-lejepa": _jepa_video_lejepa,
     "jepa/action": _jepa_action,
+    "jepa/lewm": _jepa_lewm,
+    "jepa/delta": _jepa_delta,
+    "dinowm": _dinowm,
     "tdmpc2": _tdmpc2,
     "muzero": _muzero,
 }

@@ -2138,6 +2138,9 @@ plots = [
     { name = "matplotlib" },
     { name = "pillow" },
 ]
+pretrained = [
+    { name = "huggingface-hub" },
+]
 render = [
     { name = "ovrtx" },
     { name = "pyglet" },
@@ -2157,6 +2160,7 @@ requires-dist = [
     { name = "h5py", marker = "extra == 'dev'", specifier = ">=3.11" },
     { name = "huggingface-hub", marker = "extra == 'data'", specifier = ">=0.26" },
     { name = "huggingface-hub", marker = "extra == 'dev'", specifier = ">=0.26" },
+    { name = "huggingface-hub", marker = "extra == 'pretrained'", specifier = ">=0.26" },
     { name = "jax", specifier = ">=0.4.38" },
     { name = "matplotlib", marker = "extra == 'dev'", specifier = ">=3.8" },
     { name = "matplotlib", marker = "extra == 'plots'", specifier = ">=3.8" },
@@ -2182,4 +2186,4 @@ requires-dist = [
     { name = "usd-core", marker = "extra == 'newton'", specifier = ">=25.0" },
     { name = "warp-lang", marker = "extra == 'newton'", specifier = ">=1.16" },
 ]
-provides-extras = ["plots", "newton", "render", "data", "dev", "docs", "rerun"]
+provides-extras = ["plots", "newton", "render", "data", "pretrained", "dev", "docs", "rerun"]

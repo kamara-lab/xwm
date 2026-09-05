@@ -318,7 +318,7 @@ def test_mcts_validates():
 # -- registry ----------------------------------------------------------------
 def test_registry_covers_every_family():
     names = xwm.families.available()
-    assert xwm.families.families() == ["jepa", "muzero", "tdmpc2"]
+    assert xwm.families.families() == ["dinowm", "jepa", "muzero", "tdmpc2"]
     assert "tdmpc2" in names and "muzero" in names
     assert any(name.startswith("jepa/") for name in names)
 
