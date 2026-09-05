@@ -30,6 +30,7 @@ permissions:
 env:
   FORCE_COLOR: "1"
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  UV_SYSTEM_PYTHON: "1"
 
 jobs:
   verify:
@@ -38,14 +39,21 @@ jobs:
     timeout-minutes: 30
     outputs:
       version: ${{ steps.version.outputs.version }}
+    env:
+      JAX_COMPILATION_CACHE_DIR: ${{ github.workspace }}/.jax-cache
+      JAX_PERSISTENT_CACHE_MIN_COMPILE_TIME_SECS: "0"
+      JAX_PERSISTENT_CACHE_MIN_ENTRY_SIZE_BYTES: "0"
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-          cache: pip
-          cache-dependency-path: pyproject.toml
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
 
       # A tag that disagrees with the packaged version produces a release nobody
       # can reproduce, so stop here rather than after publishing.
@@ -66,13 +74,24 @@ jobs:
           fi
 
       - name: Install
-        run: pip install -e ".[dev]"
+        run: uv pip install -e ".[dev]"
 
       - name: ruff check
         run: ruff check --output-format=github .
 
+      # Same parallel split as CI. The compilation cache is restored read-only
+      # here -- a release is rare enough that a miss costs little, and it must
+      # never be the run that decides what the cache holds.
+      - name: Restore the JAX compilation cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .jax-cache
+          key: jax-${{ runner.os }}-py3.13-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            jax-${{ runner.os }}-py3.13-
+
       - name: pytest
-        run: pytest -q
+        run: pytest -q -n auto --dist worksteal
 
   build:
     name: Build
@@ -86,14 +105,20 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Install build tooling
-        run: pip install build twine
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
 
+      # `uv build` drops a `.gitignore` beside the artifacts. Nothing downstream
+      # should have to reason about whether its globs pick up a dotfile.
       - name: Build sdist and wheel
-        run: python -m build
+        run: |
+          uv build
+          rm -f dist/.gitignore
 
       - name: Check metadata
-        run: twine check --strict dist/*
+        run: uvx twine check --strict dist/*
 
       - name: Show what will be published
         run: ls -lh dist/

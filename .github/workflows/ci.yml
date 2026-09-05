@@ -2,6 +2,19 @@
 #
 # Four independent jobs, so one failure tells you which gate broke rather than
 # just "CI is red": lint, tests, the docs build, and the package build.
+#
+# The tests are the long pole, and they are dominated by XLA compilation rather
+# than by the arithmetic that follows it. Two things address that, and together
+# they take the suite from ~15 minutes to a few:
+#
+#   * pytest-xdist splits the suite across the runner's cores. `worksteal`
+#     rather than the default round-robin, because a handful of bench tests are
+#     an order of magnitude slower than the rest and a static split leaves one
+#     worker holding all of them.
+#   * JAX's persistent compilation cache, carried between runs by
+#     actions/cache. The workers share it *within* a run too, so even a cold
+#     cache pays: whichever worker compiles a kernel first hands it to the
+#     other three.
 name: CI
 
 on:
@@ -22,6 +35,7 @@ concurrency:
 env:
   FORCE_COLOR: "1"
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  UV_SYSTEM_PYTHON: "1"
 
 jobs:
   lint:
@@ -31,42 +45,61 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-          cache: pip
-          cache-dependency-path: pyproject.toml
-
-      # Ruff only: no need to install the package or JAX to lint it.
-      - name: Install ruff
-        run: pip install "ruff>=0.6"
-
+      # Ruff only: no need for Python, the package or JAX to lint it. The action
+      # pulls a prebuilt binary, which is faster than provisioning an interpreter
+      # to pip-install one into. Unpinned, as `pip install "ruff>=0.6"` was.
       - name: ruff check
-        run: ruff check --output-format=github .
+        uses: astral-sh/ruff-action@v3
+        with:
+          args: check --output-format=github
 
       # Advisory, not a gate. The tree is not ruff-formatted, and reformatting it
       # wholesale would rewrite files the project has not chosen to rewrite. The
       # diff is printed so the drift stays visible.
       - name: ruff format (advisory)
         continue-on-error: true
-        run: ruff format --check --diff .
+        uses: astral-sh/ruff-action@v3
+        with:
+          args: format --check --diff
 
   test:
     name: Test (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
+    env:
+      # Everything compiled during the run is written here and restored next
+      # time. The two thresholds are JAX's own filters on what is worth
+      # persisting; at their defaults the short kernels -- of which this suite
+      # has thousands -- are recompiled every run.
+      JAX_COMPILATION_CACHE_DIR: ${{ github.workspace }}/.jax-cache
+      JAX_PERSISTENT_CACHE_MIN_COMPILE_TIME_SECS: "0"
+      JAX_PERSISTENT_CACHE_MIN_ENTRY_SIZE_BYTES: "0"
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: pip
-          cache-dependency-path: pyproject.toml
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
+
+      # Restore only. Saving is left to the push-to-main run below, so that PRs
+      # share one warm cache per interpreter instead of each writing a 50 MB
+      # entry of its own and evicting everyone else's.
+      - name: Restore the JAX compilation cache
+        uses: actions/cache/restore@v4
+        with:
+          path: .jax-cache
+          key: jax-${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            jax-${{ runner.os }}-py${{ matrix.python-version }}-
 
       # The `newton` extra is deliberately absent: it pulls in Warp and downloads
       # the Franka asset on first use. tests/test_envs.py `importorskip`s it, so
@@ -77,10 +110,10 @@ jobs:
       # real formats. Nothing here touches the network: the tests that download
       # are gated on XWM_DATASET_TESTS=1 and never run in CI.
       - name: Install
-        run: pip install -e ".[dev]"
+        run: uv pip install -e ".[dev]"
 
       - name: pytest
-        run: pytest -q --durations=10
+        run: pytest -q -n auto --dist worksteal --durations=10
 
       - name: Import without the optional extras
         run: |
@@ -94,6 +127,27 @@ jobs:
           python -c "from xwm.cli import main; raise SystemExit(main(['doctor']))"
           xwm models list
 
+      # Entries for kernels that no test compiles any more are never evicted, so
+      # the directory would grow without bound. Nothing in it is precious --
+      # a miss costs one recompile -- so past a ceiling it is simply dropped.
+      - name: Bound the cache
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p .jax-cache
+          size=$(du -sm .jax-cache | cut -f1)
+          echo "JAX compilation cache: ${size} MB"
+          if [ "$size" -gt 400 ]; then
+            echo "over the 400 MB ceiling, starting fresh"
+            rm -rf .jax-cache && mkdir -p .jax-cache
+          fi
+
+      - name: Save the JAX compilation cache
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: .jax-cache
+          key: jax-${{ runner.os }}-py${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}-${{ github.run_id }}
+
   docs:
     name: Docs build
     runs-on: ubuntu-latest
@@ -104,12 +158,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-          cache: pip
-          cache-dependency-path: pyproject.toml
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
 
       # The API reference imports the package, so the docs extra is additive.
       - name: Install
-        run: pip install -e ".[docs]"
+        run: uv pip install -e ".[docs]"
 
       # --strict fails on a broken link, a bad anchor or an unresolved reference.
       # Missing example figures are stubbed by docs/hooks/figures.py, so a
@@ -128,19 +185,25 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Install build tooling
-        run: pip install build twine
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
 
+      # `uv build` drops a `.gitignore` beside the artifacts. Nothing downstream
+      # should have to reason about whether its globs pick up a dotfile.
       - name: Build sdist and wheel
-        run: python -m build
+        run: |
+          uv build
+          rm -f dist/.gitignore
 
       - name: Check metadata
-        run: twine check --strict dist/*
+        run: uvx twine check --strict dist/*
 
       # A wheel that imports is the minimum bar for a release candidate.
       - name: Install the wheel and import it
         run: |
-          pip install dist/*.whl
+          uv pip install dist/*.whl
           cd "$(mktemp -d)"
           python -c "import xwm; print(xwm.__version__)"
 

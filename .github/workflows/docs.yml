@@ -30,6 +30,7 @@ concurrency:
 env:
   FORCE_COLOR: "1"
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  UV_SYSTEM_PYTHON: "1"
 
 jobs:
   build:
@@ -42,13 +43,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-          cache: pip
-          cache-dependency-path: pyproject.toml
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: pyproject.toml
 
       # `-e .` and not just the docs extra: mkdocstrings imports xwm to read its
       # signatures and docstrings, so the package has to be importable.
       - name: Install
-        run: pip install -e ".[docs]"
+        run: uv pip install -e ".[docs]"
 
       - uses: actions/configure-pages@v5
 

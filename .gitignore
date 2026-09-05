@@ -16,3 +16,7 @@ site/
 
 # Rerun recordings: a run writes them, and they are large and binary.
 *.rrd
+
+# JAX's persistent compilation cache. CI restores one here between runs; set
+# JAX_COMPILATION_CACHE_DIR to the same path locally to get the same speedup.
+.jax-cache/

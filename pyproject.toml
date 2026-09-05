@@ -63,6 +63,9 @@ pretrained = [
 ]
 dev = [
   "pytest>=8.0",
+  # CI runs the suite across the runner's cores. The suite is bound by XLA
+  # compilation rather than by memory, so a worker per core is the right split.
+  "pytest-xdist>=3.6",
   "matplotlib>=3.8",
   "pillow>=10.0",
   "ruff>=0.6",
