@@ -202,6 +202,7 @@ nav:
       - Examples: guides/examples.md
       - Benchmark: guides/benchmark.md
       - Metrics: guides/metrics.md
+      - Rerun: guides/rerun.md
       - CLI: guides/cli.md
   - Findings: findings.md
   - API reference:
@@ -224,4 +225,5 @@ nav:
       - xwm.config: reference/config.md
       - xwm.metrics: reference/metrics.md
       - xwm.plots: reference/plots.md
+      - xwm.rerun: reference/rerun.md
       - xwm.tools: reference/tools.md

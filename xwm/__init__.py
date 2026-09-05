@@ -28,6 +28,7 @@ The library separates *generic machinery* from *families* from *use*:
 :mod:`xwm.config`             experiment configs, TOML files and overrides
 :mod:`xwm.metrics`            probes and collapse diagnostics
 :mod:`xwm.plots`              figures, GIFs, JSON/LaTeX tables
+:mod:`xwm.rerun`              interactive inspection through the Rerun viewer
 :mod:`xwm.tools`              checkpointing and model summaries
 ============================  ===================================================
 
@@ -70,6 +71,7 @@ from . import (
     objectives,
     planning,
     plots,
+    rerun,
     tasks,
     tools,
     training,
@@ -102,6 +104,7 @@ __all__ = [
     "objectives",
     "planning",
     "plots",
+    "rerun",
     "seed",
     "set_seed",
     "tasks",

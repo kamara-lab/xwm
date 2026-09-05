@@ -67,6 +67,9 @@ dev = [
   "pyarrow>=17",
   "av>=12",
   "h5py>=3.11",
+  # tests/test_rerun.py writes recordings into tmp_path and reads them back;
+  # no viewer and no display are involved.
+  "rerun-sdk>=0.36",
 ]
 # The API reference imports the package, so `docs` is additive to the core install
 # rather than standalone.
@@ -74,6 +77,9 @@ docs = [
   "mkdocs>=1.6",
   "mkdocs-material>=9.5",
   "mkdocstrings[python]>=0.26",
+]
+rerun = [
+    "rerun-sdk>=0.36",
 ]
 
 [project.scripts]

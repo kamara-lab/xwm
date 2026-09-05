@@ -242,3 +242,32 @@ def test_planning_works_with_a_learned_model(key):
     plan = planner.plan(key, model.dynamics_fn(), z0, P.goal_cost(z_goal, kind="l2"))
     assert plan.actions.shape == (4, 2)
     assert bool(jnp.isfinite(plan.cost))
+
+
+def test_run_mpc_hands_its_whole_plan_to_an_observer(key):
+    """``on_step`` sees the plan, not only the action taken from it.
+
+    The costs ``run_mpc`` returns are one number per step; a diagnosis needs the
+    proposal and its spread, which is why the hook passes the ``ControlStep``.
+    """
+    planner = P.CEM(horizon=3, action_dim=2, n_samples=32, n_elites=8, n_iters=2)
+    cost = P.goal_cost(jnp.ones((4,)))
+    seen = []
+
+    P.run_mpc(
+        key,
+        planner,
+        lambda z, a: z + jnp.pad(a, (0, z.shape[-1] - a.shape[-1])),
+        cost,
+        encode=lambda observation: observation,
+        step_env=lambda observation, action: observation + jnp.pad(action, (0, 2)),
+        observation=jnp.zeros((4,)),
+        n_steps=4,
+        on_step=lambda t, step: seen.append((t, step)),
+    )
+
+    assert [t for t, _ in seen] == [0, 1, 2, 3]
+    for _, step in seen:
+        assert step.plan.mean.shape == (3, 2)
+        assert step.plan.std.shape == (3, 2)
+        assert jnp.allclose(step.action, step.plan.actions[0])

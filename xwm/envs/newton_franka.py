@@ -210,6 +210,10 @@ class FrankaEnv:
         urdf_path = Path(urdf_path)
         if not urdf_path.exists():
             raise FileNotFoundError(f"Franka URDF not found at {urdf_path}")
+        #: The URDF this arm was built from. Kept because Newton reads it once
+        #: and forgets it, while a visualiser (:mod:`xwm.rerun`) needs the same
+        #: file to draw the same robot.
+        self.urdf_path = urdf_path
 
         builder = newton.ModelBuilder()
         builder.default_joint_cfg = newton.ModelBuilder.JointDofConfig(

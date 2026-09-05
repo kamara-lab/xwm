@@ -204,12 +204,13 @@ def _merge(base: dict[str, Any], over: dict[str, Any]) -> dict[str, Any]:
 def config_hash(config: Any) -> str:
     """A short digest of everything that defines the run.
 
-    Deliberately excludes ``output_dir`` and ``name``: two runs that differ only
-    in where they are written are the same experiment, and should not look like
-    different ones in a results table.
+    Deliberately excludes ``output_dir``, ``name`` and ``log``: two runs that
+    differ only in where they are written, or in whether a viewer was watching,
+    are the same experiment, and should not look like different ones in a
+    results table -- nor land in differently-named directories.
     """
     payload = to_dict(config)
-    for cosmetic in ("output_dir", "name"):
+    for cosmetic in ("output_dir", "name", "log"):
         payload.pop(cosmetic, None)
     digest = json.dumps(payload, sort_keys=True, default=str).encode()
     return hashlib.sha256(digest).hexdigest()[:12]

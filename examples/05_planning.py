@@ -29,7 +29,7 @@ Run: python examples/05_planning.py
 import equinox as eqx
 import jax.numpy as jnp
 import jax.random as jr
-from _common import report, setting, setup
+from _common import recording, report, setting, setup
 
 import xwm
 
@@ -140,6 +140,7 @@ def frames_of(world, state, actions):
 
 def main():
     out = setup("05_planning", n_series=4)
+    rec = recording("05_planning", layout="episode")
     key = jr.PRNGKey(0)
     k_train, k_eval = jr.split(key)
     world = xwm.data.SpriteWorld(IMG_SIZE, n_distractors=2)
@@ -175,7 +176,8 @@ def main():
         z0 = encode(world.render(start))
         z_goal = encode(world.render(goal_state))
 
-        actions = plan(k_plan, z0, z_goal).actions
+        found = plan(k_plan, z0, z_goal)
+        actions = found.actions
         random = episode_actions(k_random, world)
 
         target = goal_state.pos
@@ -184,6 +186,15 @@ def main():
         results["planner"].append(distance(execute(world, start, actions), target))
         results["oracle"].append(distance(execute(world, start, oracle), target))
 
+        if i == 0 and rec is not None:
+            # One episode is enough to see *why* a plan worked or did not: the
+            # proposal it converged to, and where its imagined rollout parted
+            # company with what the world actually did.
+            xwm.rerun.log_plan(rec, found)
+            # `imagine` returns the latent *after* each action, so the truth it
+            # is compared against drops the start frame the same way.
+            truth = jnp.stack([encode(f) for f in frames_of(world, start, actions)[1:]])
+            xwm.rerun.log_latent_trajectory(rec, truth, model.imagine(z0, actions))
         if i == 0:  # keep the first episode for the animation
             strips = {
                 "planner": frames_of(world, start, actions),
@@ -271,6 +282,9 @@ def main():
             label="tab:planning",
         )
     )
+    if rec is not None:
+        rec.close()
+        report(out / "05_planning.rrd", "open with `rerun`")
 
 
 if __name__ == "__main__":

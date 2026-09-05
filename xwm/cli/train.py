@@ -74,6 +74,12 @@ def run(config: ExperimentConfig, *, source: Path | None = None, progress: bool 
         )
     started = time.perf_counter()
     callbacks = []
+    recording = _recording(config, directory, "train", "training")
+    if recording is not None:
+        from ..rerun import log_summary, training_callback
+
+        log_summary(recording, model)
+        callbacks.append(training_callback(recording, every=config.log.every))
     if progress:
 
         def report(state, metrics):
@@ -98,6 +104,10 @@ def run(config: ExperimentConfig, *, source: Path | None = None, progress: bool 
     )
     (directory / "history.json").write_text(json.dumps(history, indent=2) + "\n")
     _plot(history, directory)
+    if recording is not None:
+        recording.close()
+        if progress:
+            print(f"rerun recording at {directory / 'train.rrd'}")
     return directory
 
 
@@ -119,6 +129,29 @@ def _check_trainable_offline(name: str, model) -> None:
             "xwm.training.ReplayBuffer -- see examples/08_muzero_franka.py -- and "
             "use `xwm eval` on the result."
         )
+
+
+def _recording(config: ExperimentConfig, directory: Path, stem: str, layout: str):
+    """A :class:`xwm.rerun.Recording` for this run, or ``None``. Never fatal.
+
+    Same contract as :func:`_plot`: an optional dependency that is absent, or a
+    viewer that refuses to start, must not cost a run that is otherwise fine.
+    """
+    if not config.log.rerun:
+        return None
+    try:
+        from .. import rerun as xwm_rerun
+
+        return xwm_rerun.Recording(
+            "xwm",
+            path=directory / f"{stem}.rrd",
+            spawn=config.log.spawn,
+            connect=config.log.connect or None,
+            blueprint=getattr(xwm_rerun.blueprints, layout)(),
+        )
+    except Exception as error:  # pragma: no cover - depends on the environment
+        print(f"warning: rerun logging disabled ({type(error).__name__}: {error})")
+        return None
 
 
 def _plot(history, directory: Path) -> None:

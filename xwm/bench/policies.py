@@ -116,16 +116,22 @@ class PlannerPolicy(_Policy):
         self._warm: jnp.ndarray | None = None
         self._queue: list[np.ndarray] = []
         self.last_cost: float | None = None
+        #: The most recent :class:`~xwm.planning.Plan`, kept for diagnostics.
+        #: The executed action is one column of it; the proposal mean and its
+        #: spread are what say whether the search converged.
+        self.last_plan = None
 
     def reset(self) -> None:
         self._warm = None
         self._queue = []
+        self.last_plan = None
 
     def __call__(self, context, key) -> np.ndarray:
         if not self._queue:
             z = self.model.initial_state(context.frames(), context.actions())
             plan = self.planner.plan(key, self.dynamics, z, self.cost_fn, init_mean=self._warm)
             self.last_cost = float(plan.cost)
+            self.last_plan = plan
             if self.plan.warm_start:
                 self._warm = shift_plan(plan.mean)
             take = min(self.plan.receding_horizon, self.plan.horizon)

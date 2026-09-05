@@ -58,7 +58,7 @@ import jax
 import jax.numpy as jnp
 import jax.random as jr
 import numpy as np
-from _common import describe_settings, report, setting, setup
+from _common import describe_settings, recording, report, setting, setup
 
 import xwm
 
@@ -307,6 +307,7 @@ def path_traced(env, actions, *, seed, size):
 
 def main():
     out = setup("06_franka_newton", n_series=4)
+    rec = recording("06_franka_newton", layout="franka")
     key = jr.PRNGKey(0)
     k_enc, k_dyn, k_plan = jr.split(key, 3)
 
@@ -416,11 +417,16 @@ def main():
     # Re-render the episode at PREVIEW_SIZE rather than upscaling the training
     # frames: nearest-neighbour upscaling only turns pixels into blocks.
     preview = []
+    # The same replay feeds the GIF and, when it is on, the 3-D recording: the
+    # arm in Rerun is the arm in the figure, at the same steps.
+    watch = xwm.rerun.franka_hook(rec, env) if rec is not None else (lambda: None)
     env.reset(seed=0)
     preview.append(env.render(PREVIEW_SIZE))
+    watch()
     for action in train["action"][0]:
         env.step(action)
         preview.append(env.render(PREVIEW_SIZE))
+        watch()
     report(xwm.plots.save_gif(out / "episode.gif", np.stack(preview), fps=5))
     fig = xwm.plots.plot_frames(
         train["video"][0],
@@ -607,6 +613,9 @@ def main():
             label="tab:franka-summary",
         )
     )
+    if rec is not None:
+        rec.close()
+        report(out / "06_franka_newton.rrd", "open with `rerun`")
 
 
 if __name__ == "__main__":

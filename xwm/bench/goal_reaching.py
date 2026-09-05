@@ -22,6 +22,7 @@ Maes et al., *stable-worldmodel*, 2026. arXiv:2605.21800.
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from typing import Any
 
 import jax.random as jr
@@ -30,7 +31,7 @@ import numpy as np
 from ..core.types import PRNGKey
 from ..planning.cost import goal_cost
 from ..planning.sampling import CEM, MPPI
-from .control import run_episode
+from .control import StepInfo, run_episode
 from .policies import make_policy
 from .protocol import Episode, PlanConfig, sample_episodes
 
@@ -183,6 +184,7 @@ def evaluate(
     instances: list[Episode] | None = None,
     record: bool = False,
     progress: bool = False,
+    on_step: Callable[[str, int, StepInfo], None] | None = None,
 ) -> dict[str, Any]:
     """Score a model, and the baselines that make its score readable.
 
@@ -198,6 +200,9 @@ def evaluate(
         instances: run exactly these, instead of sampling. Pass the
             ``instances`` from a previous result to re-run it exactly.
         record: keep rendered frames for the first ``planner`` episode.
+        on_step: ``(policy_name, instance_index, step_info) -> None``, called
+            after every raw environment step of every episode. The hook
+            :mod:`xwm.rerun` installs; ``None`` costs nothing.
 
     Returns a dict per policy; :func:`xwm.bench.report.write` gives it a schema
     and writes it out.
@@ -251,6 +256,11 @@ def evaluate(
                         key=jr.fold_in(key, i),
                         budget=budget,
                         record=record and name == "planner" and i == 0,
+                        on_step=(
+                            None
+                            if on_step is None
+                            else (lambda info, _n=name, _i=i: on_step(_n, _i, info))
+                        ),
                     )
                 )
                 if progress:

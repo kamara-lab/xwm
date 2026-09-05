@@ -13,3 +13,6 @@ logs/
 # Docs
 site/
 .cache/
+
+# Rerun recordings: a run writes them, and they are large and binary.
+*.rrd
