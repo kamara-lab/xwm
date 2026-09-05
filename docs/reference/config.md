@@ -1,0 +1,3 @@
+# `xwm.config`
+
+::: xwm.config

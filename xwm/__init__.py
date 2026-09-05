@@ -23,6 +23,9 @@ The library separates *generic machinery* from *families* from *use*:
 :mod:`xwm.envs`               simulated robots (a Franka arm in Newton)
 :mod:`xwm.data`               batch streams and synthetic controllable worlds
 :mod:`xwm.datasets`           readers for recorded corpora (DROID, LIBERO, OGBench)
+:mod:`xwm.tasks`              benchmark tasks: dataset + environment + metric
+:mod:`xwm.bench`              the goal-reaching evaluation protocol
+:mod:`xwm.config`             experiment configs, TOML files and overrides
 :mod:`xwm.metrics`            probes and collapse diagnostics
 :mod:`xwm.plots`              figures, GIFs, JSON/LaTeX tables
 :mod:`xwm.tools`              checkpointing and model summaries
@@ -51,6 +54,8 @@ Quick start
 """
 
 from . import (
+    bench,
+    config,
     core,
     data,
     datasets,
@@ -65,6 +70,7 @@ from . import (
     objectives,
     planning,
     plots,
+    tasks,
     tools,
     training,
 )
@@ -75,28 +81,31 @@ from .masking import MaskBatch
 __version__ = "0.1.0"
 
 __all__ = [
-    "JEPA",
-    "MaskBatch",
-    "datasets",
-    "Module",
-    "WorldModel",
     "__version__",
+    "bench",
+    "config",
     "core",
     "data",
+    "datasets",
     "dynamics",
     "encoders",
     "envs",
     "families",
     "heads",
+    "JEPA",
     "key_source",
+    "MaskBatch",
     "masking",
     "metrics",
+    "Module",
     "nn",
     "objectives",
     "planning",
     "plots",
     "seed",
     "set_seed",
+    "tasks",
     "tools",
     "training",
+    "WorldModel",
 ]

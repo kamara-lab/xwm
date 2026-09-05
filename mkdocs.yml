@@ -200,6 +200,9 @@ nav:
       - Figures and tables: guides/figures.md
       - Running on GPU: guides/gpu.md
       - Examples: guides/examples.md
+      - Benchmark: guides/benchmark.md
+      - Metrics: guides/metrics.md
+      - CLI: guides/cli.md
   - Findings: findings.md
   - API reference:
       - reference/index.md
@@ -216,6 +219,9 @@ nav:
       - xwm.envs: reference/envs.md
       - xwm.data: reference/data.md
       - xwm.datasets: reference/datasets.md
+      - xwm.tasks: reference/tasks.md
+      - xwm.bench: reference/bench.md
+      - xwm.config: reference/config.md
       - xwm.metrics: reference/metrics.md
       - xwm.plots: reference/plots.md
       - xwm.tools: reference/tools.md

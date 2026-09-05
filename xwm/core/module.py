@@ -54,6 +54,8 @@ class WorldModel(Module):
     """
 
     uses_target: bool = eqx.field(static=True, default=False)
+    #: Frames of context the latent state carries. 1 for a Markov model.
+    history: int = eqx.field(static=True, default=1)
 
     def loss(
         self,
@@ -90,6 +92,39 @@ class WorldModel(Module):
         the gradient.
         """
         return batch
+
+    # -- planning contract (xwm.core.types.Plannable) -------------------------
+    # Defaults for the Markov case. A model whose latent state is a window of
+    # several frames overrides all three together; see
+    # :class:`xwm.families.jepa.ARWorldModel`.
+    def initial_state(
+        self, frames: Array, actions: Array | None = None, *, key: PRNGKey | None = None
+    ) -> Array:
+        """Latent state from ``(H, ...)`` observations: by default, encode the newest.
+
+        ``actions`` are the ``(H - 1, A)`` actions between those frames; the
+        default ignores them because a single frame has no history to condition
+        on.
+        """
+        del actions
+        return self._encode_for_planning(frames[-1], key=key)
+
+    def readout(self, z: Array) -> Array:
+        """The part of ``z`` a goal is compared to. Identity for a Markov model."""
+        return z
+
+    def goal_embedding(self, frame: Array, *, key: PRNGKey | None = None) -> Array:
+        """Encode a goal observation to what :meth:`readout` should reach."""
+        return self._encode_for_planning(frame, key=key)
+
+    def _encode_for_planning(self, frame: Array, *, key: PRNGKey | None) -> Array:
+        encode = getattr(self, "encode", None)
+        if encode is None:
+            raise NotImplementedError(
+                f"{type(self).__name__} has no encode(); implement initial_state and "
+                "goal_embedding to make it plannable"
+            )
+        return encode(frame, key=key)
 
 
 def batched_apply(fn, x, *, batch_size: int = 64) -> PyTree:

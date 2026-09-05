@@ -131,6 +131,24 @@ DATASETS: dict[str, DatasetSpec] = {
         licence="MIT",
         citation="Chi et al., Diffusion Policy, RSS 2023. arXiv:2303.04137",
     ),
+    "lerobot/pusht-keypoints": DatasetSpec(
+        name="lerobot/pusht-keypoints",
+        reader="lerobot",
+        source="lerobot/pusht_keypoints",
+        summary=(
+            "Push-T as 8 T-block keypoints (``position``, 16-D) plus the agent "
+            "position (``state``, 2-D). The same 206 episodes as ``lerobot/pusht`` "
+            "in the same order, without video. ``lerobot/pusht`` records only the "
+            "agent, so this is the only source of the block pose -- which is what "
+            ":mod:`xwm.tasks` joins the two on to evaluate goal reaching."
+        ),
+        action_dim=2,
+        observation=("state", "position"),
+        episodes=206,
+        size_gb=0.01,
+        licence="MIT",
+        citation="Chi et al., Diffusion Policy, RSS 2023. arXiv:2303.04137",
+    ),
     # -- Open X-Embodiment, through its LeRobot mirrors ---------------------
     "oxe/rt1": DatasetSpec(
         name="oxe/rt1",
@@ -534,7 +552,12 @@ DATASETS: dict[str, DatasetSpec] = {
 
 
 #: A spec's ``observation`` tuple as the readers' ``observation=`` argument.
-_MODALITY = {("video",): "video", ("state",): "state", ("video", "state"): "both"}
+_MODALITY = {
+    ("video",): "video",
+    ("state",): "state",
+    ("video", "state"): "both",
+    ("state", "position"): "state",
+}
 
 
 def available() -> list[str]:

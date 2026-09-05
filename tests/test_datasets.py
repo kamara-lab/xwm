@@ -98,7 +98,9 @@ def _write_mp4(path, frames, fps=10):
             container.mux(packet)
 
 
-def write_lerobot(root, *, version="v3.0", n_episodes=3, n_frames=12, size=16, fps=10):
+def write_lerobot(
+    root, *, version="v3.0", n_episodes=3, n_frames=12, size=16, fps=10, position=False
+):
     """A LeRobot dataset, in either layout.
 
     v3: many episodes per parquet and per mp4, with the boundaries in
@@ -132,6 +134,11 @@ def write_lerobot(root, *, version="v3.0", n_episodes=3, n_frames=12, size=16, f
                 "features": {
                     "action": {"dtype": "float32", "shape": [7]},
                     "observation.state": {"dtype": "float32", "shape": [7]},
+                    **(
+                        {"observation.environment_state": {"dtype": "float32", "shape": [4]}}
+                        if position
+                        else {}
+                    ),
                     camera: {"dtype": "video", "shape": [size, size, 3]},
                 },
             }
@@ -148,14 +155,20 @@ def write_lerobot(root, *, version="v3.0", n_episodes=3, n_frames=12, size=16, f
         return frames
 
     rows = {"action": [], "observation.state": [], "episode_index": [], "task_index": []}
+    if position:
+        rows["observation.environment_state"] = []
     records = []
     all_frames = []
     for episode in range(n_episodes):
         actions = (np.arange(n_frames * 7) + episode * 1000).astype(np.float32).reshape(n_frames, 7)
         states = actions + 0.5
+        # Scene state, not proprioception: a different column with a different width.
+        scene = (states[:, :4] * -1.0).astype(np.float32)
         if v3:
             rows["action"].extend(actions.tolist())
             rows["observation.state"].extend(states.tolist())
+            if position:
+                rows["observation.environment_state"].extend(scene.tolist())
             rows["episode_index"].extend([episode] * n_frames)
             rows["task_index"].extend([episode % 2] * n_frames)
             start = episode * n_frames
@@ -181,6 +194,9 @@ def write_lerobot(root, *, version="v3.0", n_episodes=3, n_frames=12, size=16, f
                 {
                     "action": actions.tolist(),
                     "observation.state": states.tolist(),
+                    **(
+                        {"observation.environment_state": scene.tolist()} if position else {}
+                    ),
                     "episode_index": [episode] * n_frames,
                     "task_index": [episode % 2] * n_frames,
                 }
@@ -383,6 +399,32 @@ def test_lerobot_decodes_frames_in_order(tmp_path):
     (episode, _) = list(xwm.datasets.lerobot.iter_episodes("local", root=root))
     brightness = episode["video"].mean(axis=(1, 2, 3))
     assert np.all(np.diff(brightness) > 0)
+
+
+@pytest.mark.parametrize("version", ["v2.1", "v3.0"])
+def test_lerobot_surfaces_environment_state_as_position(tmp_path, version):
+    """``observation.environment_state`` is scene state, and must not be dropped.
+
+    Push-T records the agent in ``observation.state`` and the pushed block
+    nowhere else, so a reader that matches only the ``observation.state`` prefix
+    silently yields a dataset with no ground truth for the object being pushed.
+    """
+    root = tmp_path / "position"
+    write_lerobot(root, version=version, n_episodes=2, n_frames=8, position=True)
+    episode = next(xwm.datasets.lerobot.iter_episodes(None, root=root, observation="state"))
+
+    assert episode["position"].shape == (8, 4)
+    assert episode["state"].shape == (8, 7)
+    # Distinct columns, not a concatenation of one into the other.
+    assert np.allclose(episode["position"], -episode["state"][:, :4])
+    spec.check_episode(episode)
+
+
+def test_lerobot_without_environment_state_has_no_position(tmp_path):
+    root = tmp_path / "nopos"
+    write_lerobot(root, n_episodes=1, n_frames=6)
+    episode = next(xwm.datasets.lerobot.iter_episodes(None, root=root, observation="state"))
+    assert "position" not in episode
 
 
 def test_lerobot_info_and_camera_selection(tmp_path):

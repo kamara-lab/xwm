@@ -29,6 +29,26 @@ def _planners(horizon=8, action_dim=2):
     ]
 
 
+# -- goal costs over structured latents --------------------------------------
+def test_goal_cost_readout_scores_only_the_selected_slice():
+    """A history window must not be charged for its stale context frames."""
+    goal = jnp.ones((2,))
+    cost = P.goal_cost(goal, kind="l2", readout=lambda z: z[-1])
+    matching = jnp.stack([jnp.full((2,), -99.0), goal])
+    assert float(cost(matching, jnp.zeros((2,)), jnp.asarray(0))) == pytest.approx(0.0, abs=1e-6)
+    stale_only = jnp.stack([goal, jnp.full((2,), -99.0)])
+    assert float(cost(stale_only, jnp.zeros((2,)), jnp.asarray(0))) > 1.0
+
+
+def test_goal_cost_without_readout_is_unchanged():
+    goal = jnp.ones((1, 2))
+    z = jnp.zeros((1, 2))
+    plain = P.goal_cost(goal, kind="l2")
+    identity = P.goal_cost(goal, kind="l2", readout=lambda z: z)
+    a, t = jnp.zeros((2,)), jnp.asarray(0)
+    assert float(plain(z, a, t)) == pytest.approx(float(identity(z, a, t)))
+
+
 # -- rollout primitives -----------------------------------------------------
 def test_rollout_returns_states_after_each_action():
     z0 = jnp.zeros((1, 2))

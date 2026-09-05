@@ -1,0 +1,13 @@
+# The fastest end-to-end run: a few hundred steps on the synthetic pusher.
+# Not a result -- a check that training, planning, evaluation and reporting
+# still compose. About a minute on a laptop CPU.
+extends = "jepa.toml"
+name = "smoke"
+
+[train]
+steps = 300
+batch_size = 16
+clip_length = 4
+
+[eval]
+episodes = 4

@@ -1,0 +1,29 @@
+# TD-MPC2 over the state vector, planned with a goal objective.
+#
+# The point is not TD-MPC2: it is to show the protocol producing a positive
+# result with a *learned* model, where the encoder is not the bottleneck. From
+# pixels, a randomly-initialised frozen ViT leaves the goal cost almost nothing
+# to discriminate on -- held-out frames embed at mean cosine similarity ~0.999 --
+# and no planner can beat a random policy through it however good the dynamics
+# are. An 8-D state vector removes that variable.
+#
+# Note the reward and value heads go unused on a goal objective. That is the
+# handicap the protocol imposes to keep families comparable, and it is why
+# TD-MPC2 scores low on published goal-reaching tables.
+extends = "../_base/synthetic.toml"
+name = "tdmpc2-state"
+
+[task.overrides]
+observation = ["state"]
+
+[model]
+name = "tdmpc2"
+
+[model.kwargs]
+latent_dim = 128
+hidden_dim = 256
+horizon = 5
+
+[train]
+steps = 3000
+batch_size = 64

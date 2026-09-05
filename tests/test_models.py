@@ -176,6 +176,28 @@ def test_action_model_rejects_mismatched_action_count(key):
         )
 
 
+def test_detached_target_starves_the_encoder_of_half_its_gradient(key):
+    """``detach_target`` decides whether gradient flows through the target branch.
+
+    Detaching is right for a frozen encoder and for the V-JEPA 2-AC recipe; the
+    end-to-end LeJEPA-family models train *through* the target and rely on a
+    regularizer to stop the encoder trivialising it. Both must be expressible,
+    and the difference has to be visible in the gradient.
+    """
+    batch = {"video": jr.normal(key, (2, 4, 3, 16, 16)), "action": jr.normal(key, (2, 3, 2))}
+    grad_norm = lambda m: _grad_norm(  # noqa: E731
+        eqx.filter_grad(lambda x: x.loss(batch, key=key)[0])(m).encoder
+    )
+    detached = grad_norm(_action_model(key, freeze_encoder=False, detach_target=True))
+    live = grad_norm(_action_model(key, freeze_encoder=False, detach_target=False))
+    assert detached > 0
+    assert live > detached
+
+
+def test_detached_target_is_the_default(key):
+    assert _action_model(key).detach_target is True
+
+
 def test_frozen_encoder_gets_no_gradient_and_no_optimizer_state(key):
     model = _action_model(key, freeze_encoder=True)
     batch = {"video": jr.normal(key, (2, 4, 3, 16, 16)), "action": jr.normal(key, (2, 3, 2))}
@@ -335,3 +357,67 @@ def test_batched_apply_keeps_encoder_output_identical(key):
     chunked = xwm.core.batched_apply(jax.jit(jax.vmap(encoder)), images, batch_size=8)
     assert chunked.shape == whole.shape
     assert jnp.allclose(chunked, whole, atol=1e-5)
+
+
+# -- the planning contract (xwm.core.types.Plannable) -----------------------
+@pytest.mark.parametrize(
+    "build",
+    [
+        pytest.param(lambda k: _action_model(k), id="jepa/action"),
+        pytest.param(
+            lambda k: xwm.families.tdmpc2.tdmpc2(
+                action_dim=2, observation="state", state_dim=6, latent_dim=32, hidden_dim=32, key=k
+            ),
+            id="tdmpc2",
+        ),
+        pytest.param(
+            lambda k: xwm.families.muzero.muzero(
+                n_actions=5, observation="state", state_dim=6, latent_dim=32, hidden_dim=32, key=k
+            ),
+            id="muzero",
+        ),
+    ],
+)
+def test_every_family_satisfies_the_plannable_protocol(build, key):
+    """The benchmark layer talks to models through this and nothing else."""
+    model = build(key)
+    assert isinstance(model, xwm.core.Plannable)
+    assert model.history == 1
+
+
+def test_markov_initial_state_encodes_the_newest_frame(key):
+    """With ``history == 1`` the latent state is just the last observation's encoding."""
+    model = _action_model(key)
+    frames = jr.normal(key, (1, 3, 16, 16))
+    z = model.initial_state(frames)
+    assert jnp.allclose(z, model.encode(frames[-1]))
+    assert jnp.allclose(model.readout(z), z)  # identity readout
+    assert jnp.allclose(model.goal_embedding(frames[-1]), z)
+
+
+def test_initial_state_ignores_actions_when_markov(key):
+    model = _action_model(key)
+    frames = jr.normal(key, (1, 3, 16, 16))
+    with_actions = model.initial_state(frames, jr.normal(jr.PRNGKey(9), (0, 2)))
+    assert jnp.allclose(with_actions, model.initial_state(frames))
+
+
+def test_plannable_state_feeds_a_planner_unchanged(key):
+    """``initial_state`` -> ``dynamics_fn`` -> ``goal_cost(readout=)`` must compose."""
+    model = _action_model(key).eval_mode()
+    frames = jr.normal(key, (1, 3, 16, 16))
+    z0 = model.initial_state(frames)
+    cost = xwm.planning.goal_cost(model.goal_embedding(frames[-1]), readout=model.readout)
+    planner = xwm.planning.CEM(3, 2, n_samples=32, n_elites=8, n_iters=2)
+    plan = planner.plan(key, model.dynamics_fn(), z0, cost)
+    assert plan.actions.shape == (3, 2)
+    assert bool(jnp.isfinite(plan.cost))
+
+
+def test_a_model_without_an_encoder_says_so(key):
+    class Headless(xwm.core.WorldModel):
+        def loss(self, batch, *, key, target=None):
+            raise NotImplementedError
+
+    with pytest.raises(NotImplementedError, match="has no encode"):
+        Headless().initial_state(jnp.zeros((1, 3)))

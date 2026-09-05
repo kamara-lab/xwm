@@ -64,6 +64,12 @@ class ActionWorldModel(WorldModel):
         dynamics: the one-step action-conditioned model.
         freeze_encoder: exclude the encoder from :meth:`trainable`, so the
             optimizer never touches it and allocates no state for it.
+        detach_target: stop gradients at the prediction targets. ``True`` is the
+            V-JEPA 2-AC setting and the only safe one with ``collapse="none"``
+            and an unfrozen encoder: a target the encoder can move is a target
+            it will move toward whatever is easiest to predict. LeWM trains
+            *through* the target and relies on its regularizer instead; see
+            :class:`~xwm.families.jepa.ARWorldModel`.
         teacher_forcing_weight, rollout_weight: mixture of the two losses.
         loss_kind: how latents are compared (V-JEPA 2-AC uses L1).
         collapse: ``"none"`` is correct with a frozen encoder. Use ``"sigreg"``
@@ -74,6 +80,7 @@ class ActionWorldModel(WorldModel):
     encoder: VisionEncoder
     dynamics: ActionConditionedPredictor
     freeze_encoder: bool = eqx.field(static=True)
+    detach_target: bool = eqx.field(static=True)
     teacher_forcing_weight: float = eqx.field(static=True)
     rollout_weight: float = eqx.field(static=True)
     loss_kind: LossKind = eqx.field(static=True)
@@ -90,6 +97,7 @@ class ActionWorldModel(WorldModel):
         dynamics: ActionConditionedPredictor,
         *,
         freeze_encoder: bool = True,
+        detach_target: bool = True,
         teacher_forcing_weight: float = 1.0,
         rollout_weight: float = 1.0,
         loss_kind: LossKind = "l1",
@@ -107,6 +115,7 @@ class ActionWorldModel(WorldModel):
         self.encoder = encoder
         self.dynamics = dynamics
         self.freeze_encoder = freeze_encoder
+        self.detach_target = detach_target
         self.teacher_forcing_weight = teacher_forcing_weight
         self.rollout_weight = rollout_weight
         self.loss_kind = loss_kind
@@ -196,9 +205,9 @@ class ActionWorldModel(WorldModel):
         )  # (B, T, N, D)
         if self.freeze_encoder:
             z = stop_gradient(z)
-        # Targets are always detached: the dynamics model must chase the
+        # Targets are detached by default: the dynamics model must chase the
         # representation, never move it toward something easier to predict.
-        targets = stop_gradient(z[:, 1:])
+        targets = stop_gradient(z[:, 1:]) if self.detach_target else z[:, 1:]
 
         metrics: Metrics = {}
         total = jnp.zeros(())

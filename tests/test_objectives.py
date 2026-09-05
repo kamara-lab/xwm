@@ -100,6 +100,60 @@ def test_sigreg_drives_a_distribution_toward_isotropy(key):
     assert 0.6 < float(jnp.std(z)) < 1.8
 
 
+def test_sigreg_quadratures_differ_by_the_known_factor(key):
+    """The two rules estimate the same integral under different conventions.
+
+    xwm normalises its quadrature weights and does not scale by ``n``; the
+    LeJEPA-family models integrate ``exp(-t^2/2)`` unnormalised and multiply by
+    ``n``. The ratio is therefore ``n * sqrt(2 pi)``, and pinning it here is
+    what stops a future refactor silently changing what a published
+    ``reg_weight`` means.
+    """
+    z = jr.normal(jr.PRNGKey(1), (512, 32))
+    reference = float(
+        O.sigreg(z, key, n_proj=256, n_nodes=17, quadrature="trapezoid", scale_by_n=True)
+    )
+    ours = float(O.sigreg(z, key, n_proj=256, n_nodes=64))
+    assert abs(reference / (ours * z.shape[0]) - np.sqrt(2 * np.pi)) < 0.05
+
+
+def test_sigreg_trapezoid_still_detects_anisotropy(key):
+    z = jr.normal(jr.PRNGKey(1), (1024, 32))
+    settings = dict(n_proj=128, n_nodes=17, quadrature="trapezoid", scale_by_n=True)
+    baseline = float(O.sigreg(z, key, **settings))
+    assert float(O.sigreg(z.at[:, :16].multiply(0.05), key, **settings)) > 10 * baseline
+
+
+def test_sigreg_axis_averages_per_slice_with_shared_directions(key):
+    """``axis=1`` is a per-timestep test, not a pooled one."""
+    z = jr.normal(jr.PRNGKey(3), (128, 4, 16))
+    manual = jnp.mean(jnp.stack([O.sigreg(z[:, t], key, n_proj=64) for t in range(4)]))
+    assert float(O.sigreg(z, key, n_proj=64, axis=1)) == pytest.approx(float(manual), rel=1e-5)
+
+
+def test_sigreg_axis_catches_what_pooling_conflates(key):
+    """A scale mixture: neither slice is standard normal, but their union nearly is.
+
+    This is the case the ``axis`` argument exists for. Pooling asks whether the
+    *union* over timesteps is isotropic, which a mixture of a too-narrow and a
+    too-wide slice can satisfy while neither slice does.
+    """
+    z = jr.normal(jr.PRNGKey(4), (2048, 2, 16))
+    mixture = jnp.stack([0.7 * z[:, 0], 1.22 * z[:, 1]], axis=1)
+    assert float(jnp.var(mixture)) == pytest.approx(1.0, abs=0.05)  # the union looks fine
+
+    baseline = float(O.sigreg(z, key, n_proj=256, axis=1))
+    per_slice = float(O.sigreg(mixture, key, n_proj=256, axis=1))
+    pooled = float(O.sigreg(mixture, key, n_proj=256))
+    assert per_slice > 20 * baseline  # each slice is caught
+    assert per_slice > 5 * pooled  # pooling nearly misses it
+
+
+def test_sigreg_rejects_unknown_quadrature(key):
+    with pytest.raises(ValueError, match="unknown quadrature"):
+        O.sigreg(jr.normal(key, (32, 4)), key, quadrature="simpson")
+
+
 def test_sigreg_handles_token_sequences(key):
     """(B, N, D) input is flattened to B*N samples, not treated as B."""
     z = jr.normal(jr.PRNGKey(1), (16, 32, 8))
