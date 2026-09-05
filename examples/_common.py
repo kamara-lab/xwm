@@ -56,6 +56,27 @@ def outputs(name: str) -> Path:
     return path
 
 
+def recording(name: str, *, layout: str = "training"):
+    """A :class:`xwm.rerun.Recording` for this example, or ``None``.
+
+    Off unless ``XWM_RERUN=1``, because an example's job is to write the same
+    artifacts every time. When it is on the recording lands beside them, and
+    every logger in :mod:`xwm.rerun` accepts ``None``, so an example calls the
+    loggers unconditionally either way.
+    """
+    if not setting("RERUN", False):
+        return None
+    try:
+        blueprint = getattr(xwm.rerun.blueprints, layout)()
+        return xwm.rerun.Recording(
+            "xwm", path=outputs(name) / f"{name}.rrd", spawn=setting("RERUN_SPAWN", False),
+            blueprint=blueprint,
+        )
+    except Exception as exc:  # noqa: BLE001 - a viewer is not worth the run
+        print(f"  (rerun logging disabled: {type(exc).__name__}: {exc})")
+        return None
+
+
 def setup(name: str, *, n_series: int = xwm.plots.MAX_CATEGORICAL) -> Path:
     """Apply the viridis style globally and return this example's output directory."""
     import matplotlib
@@ -77,6 +98,7 @@ def figure_episode(
     fps: int = 5,
     usd_name: str | None = None,
     label: str = "Franka FR3 in Newton",
+    on_frame=None,
 ):
     """Render one episode at figure quality and write it as a GIF and a strip.
 
@@ -93,6 +115,10 @@ def figure_episode(
     taken are recorded on the first pass and replayed for the others, so a
     stochastic policy still yields one episode across every renderer rather than
     three similar-looking ones.
+
+    ``on_frame`` is called once per rendered frame of the *first* pass, which
+    is what :func:`xwm.rerun.franka_hook` wants: the episode is replayed for
+    each renderer, and logging every pass would triple the recording.
 
     Returns the frames as ``(T, 3, H, W)``.
     """
@@ -112,8 +138,19 @@ def figure_episode(
 
     taken: list[np.ndarray] = []
 
+    observed = {"done": False}
+
     def play(record, replay=None):
         """Run the episode once, calling ``record()`` after reset and each step."""
+        watch = None if observed["done"] or on_frame is None else on_frame
+        observed["done"] = True
+
+        def record_all():
+            record()
+            if watch is not None:
+                watch()
+
+        record = record_all
         env.reset(seed=seed)
         record()
         source = replay if replay is not None else actions

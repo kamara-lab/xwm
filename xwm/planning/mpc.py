@@ -84,6 +84,7 @@ def run_mpc(
     step_env: Callable[[Array, Array], Array],
     observation: Array,
     n_steps: int,
+    on_step: Callable[[int, ControlStep], None] | None = None,
 ) -> tuple[list[Array], list[Array], list[Array]]:
     """Run a closed loop against a real (or simulated) environment.
 
@@ -93,6 +94,9 @@ def run_mpc(
             plain callable: xwm does not own your simulator.
         observation: the starting observation.
         n_steps: control steps to execute.
+        on_step: called with ``(t, control_step)`` after each plan, before the
+            environment advances. The whole :class:`ControlStep` is passed, so
+            a logger sees the plan and not only the action taken from it.
 
     Returns:
         ``(observations, actions, costs)`` -- the realised trajectory. This is a
@@ -106,6 +110,8 @@ def run_mpc(
         step = control_step(
             jr.fold_in(key, t), planner, dynamics, z, cost_fn, warm_start=warm_start
         )
+        if on_step is not None:
+            on_step(t, step)
         observation = step_env(observation, step.action)
         observations.append(observation)
         actions.append(step.action)

@@ -38,6 +38,14 @@ def _parser() -> argparse.ArgumentParser:
     train.add_argument("--name", default=None, help="name this run")
     train.add_argument("--quiet", action="store_true")
     train.add_argument(
+        "--rerun",
+        action="store_true",
+        help="write a Rerun recording into the run directory (needs xwm[rerun])",
+    )
+    train.add_argument(
+        "--rerun-spawn", action="store_true", help="--rerun, and open the viewer as well"
+    )
+    train.add_argument(
         "--dry-run",
         action="store_true",
         help="resolve the config, print it and the run directory, and stop",
@@ -52,6 +60,12 @@ def _parser() -> argparse.ArgumentParser:
         "--policy", action="append", default=None, help="repeatable; overrides eval.policy"
     )
     evaluate.add_argument("--quiet", action="store_true")
+    evaluate.add_argument(
+        "--rerun", action="store_true", help="write eval.rrd into the run directory"
+    )
+    evaluate.add_argument(
+        "--rerun-spawn", action="store_true", help="--rerun, and open the viewer as well"
+    )
 
     for name, help_text in (
         ("tasks", "benchmark tasks"),
@@ -66,6 +80,22 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _log_overrides(args) -> list[str]:
+    """Translate the ``--rerun`` flags into config overrides.
+
+    Flags rather than a second configuration path: ``log.rerun`` is a real
+    config field, so a file can set it permanently, and the flag is the
+    one-off. It is excluded from the config digest, so neither changes where
+    the run is written.
+    """
+    overrides = []
+    if getattr(args, "rerun", False) or getattr(args, "rerun_spawn", False):
+        overrides.append("log.rerun=true")
+    if getattr(args, "rerun_spawn", False):
+        overrides.append("log.spawn=true")
+    return overrides
+
+
 def _cmd_train(args) -> int:
     from ..config.loader import load
 
@@ -74,6 +104,7 @@ def _cmd_train(args) -> int:
         overrides.append(f"output_dir={args.output_dir}")
     if args.name:
         overrides.append(f"name={args.name}")
+    overrides.extend(_log_overrides(args))
     config = load(args.config, overrides=overrides)
 
     from .train import run, run_directory
@@ -102,6 +133,7 @@ def _cmd_eval(args) -> int:
     overrides = list(args.overrides)
     if args.policy:
         overrides.append(f"eval.policy=[{','.join(args.policy)}]")
+    overrides.extend(_log_overrides(args))
     if overrides:
         config = from_dict(apply_overrides(to_dict(config), overrides))
     path = run(config, directory, checkpoint=args.checkpoint, progress=not args.quiet)
@@ -169,6 +201,7 @@ def _cmd_doctor(args) -> int:
     report("dataset readers:", which_readers())
     report("render backends:", which_backends())
     report("simulators:", which_simulators())
+    report("logging:", {"rerun (xwm.rerun)": xwm.rerun.available()})
     return 0
 
 

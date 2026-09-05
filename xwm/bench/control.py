@@ -28,6 +28,7 @@ silently change the metric.
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import jax.numpy as jnp
@@ -37,7 +38,27 @@ import numpy as np
 from ..core.types import PRNGKey
 from .protocol import Episode
 
-__all__ = ["EpisodeResult", "Context", "run_episode"]
+__all__ = ["EpisodeResult", "StepInfo", "Context", "run_episode"]
+
+
+@dataclass
+class StepInfo:
+    """One raw environment step, as handed to ``run_episode``'s ``on_step``.
+
+    Everything the loop knows at that instant, so an observer need not
+    reconstruct any of it. ``action`` is the *planned* action, which covers
+    ``frameskip`` raw steps, and ``raw`` is the one actually executed now.
+    """
+
+    step: int
+    action: np.ndarray
+    raw: np.ndarray
+    state: np.ndarray
+    goal_state: np.ndarray
+    distance: float
+    success: bool
+    frame: np.ndarray | None = None
+    plan: object | None = None
 
 
 @dataclass
@@ -117,6 +138,7 @@ def run_episode(
     key: PRNGKey,
     budget: int,
     record: bool = False,
+    on_step: Callable[[StepInfo], None] | None = None,
 ) -> EpisodeResult:
     """Run one instance to the budget and measure it.
 
@@ -129,6 +151,11 @@ def run_episode(
         budget: raw environment steps allowed.
         record: keep every rendered frame, for a GIF. Off by default -- it is
             the only part of this loop whose cost grows with the episode.
+        on_step: called with a :class:`StepInfo` after every raw environment
+            step. Rendering is expensive, so ``StepInfo.frame`` is filled only
+            when ``record`` is on; a logger that wants frames should ask for
+            both. Never called for the initial state -- an observer that wants
+            it has the environment.
     """
     recording = task.episodes(split="val")[episode.index]
     goal_state = task.env_state(recording["state"][episode.goal], env)
@@ -167,8 +194,23 @@ def run_episode(
             if task.success(env.state(), goal_state) and result.solved_at is None:
                 result.solved_at = steps
                 result.success = True
-            if record:
-                result.frames.append(env.render())
+            frame = env.render() if record else None
+            if frame is not None:
+                result.frames.append(frame)
+            if on_step is not None:
+                on_step(
+                    StepInfo(
+                        step=steps,
+                        action=action,
+                        raw=raw,
+                        state=env.state(),
+                        goal_state=goal_state,
+                        distance=distance,
+                        success=result.success,
+                        frame=frame,
+                        plan=getattr(policy, "last_plan", None),
+                    )
+                )
             if steps >= budget:
                 break
         context.observe(task.observation(env.observe()))

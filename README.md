@@ -8,7 +8,7 @@
   <a href="https://pypi.org/project/xwm/"><img alt="PyPI version" src="https://img.shields.io/pypi/v/xwm?style=flat-square&color=059669&labelColor=ffffff"></a>
   <a href="https://www.python.org/downloads/"><img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-059669?style=flat-square&labelColor=ffffff"></a>
   <a href="https://github.com/jax-ml/jax"><img alt="JAX" src="https://img.shields.io/badge/built%20on-JAX%20%20-059669?style=flat-square&labelColor=ffffff"></a>
-  <a href="#tests"><img alt="Tests" src="https://img.shields.io/badge/tests-388%20passing-059669?style=flat-square&labelColor=ffffff"></a>
+  <a href="#tests"><img alt="Tests" src="https://img.shields.io/badge/tests-520%20passing-059669?style=flat-square&labelColor=ffffff"></a>
   <a href="https://docs.astral.sh/ruff/"><img alt="Ruff" src="https://img.shields.io/badge/lint-ruff-059669?style=flat-square&labelColor=ffffff"></a>
   <a href="#license"><img alt="Apache 2.0" src="https://img.shields.io/badge/license-Apache--2.0-059669?style=flat-square&labelColor=ffffff"></a>
 </p>
@@ -32,6 +32,7 @@ uv add xwm                     # core
 uv add "xwm[plots]"            # figures, GIFs, tables
 uv add "xwm[newton]"           # the Franka robot environment
 uv add "xwm[data]"             # recorded datasets: DROID, LIBERO, OGBench, OXE
+uv add "xwm[rerun]"            # inspect a run in the Rerun viewer
 ```
 
 Or work on it from a clone, where `uv.lock` pins the whole environment:
@@ -103,6 +104,7 @@ They are complementary rather than competing. JEPA needs no reward, so it can pr
 | `xwm.config` | experiment configs, TOML files and overrides |
 | `xwm.metrics` | probes and collapse diagnostics |
 | `xwm.plots` | figures, GIFs, JSON/LaTeX tables |
+| `xwm.rerun` | interactive inspection: training, episodes, latents, the arm in 3-D |
 | `xwm.tools` | checkpointing, model summaries |
 
 `xwm.dynamics` is the centre of the library rather than an add-on: every family consumes a $(z, a) \rightarrow z$ model from it, and every planner consumes nothing else. Changing family changes how that model is *trained*, never how it is *used*.
@@ -277,6 +279,25 @@ and no model number from that task means anything yet.
 | `xwm.tasks` | a task: dataset + environment + metric, and the frameskip, resolution, goal offset and budget written down once |
 | `xwm.bench` | instance sampling, the control loop, the four policies, the results schema |
 | `xwm.config` | frozen dataclasses, TOML files, `key.path=value` overrides |
+
+### Inspecting a run
+
+A table says a planner failed, not how. `--rerun` writes a self-contained
+recording into the run directory, so a run on a GPU box opens on a laptop.
+
+```bash
+pip install "xwm[rerun]"
+xwm train configs/pusht/jepa.toml --rerun --eval
+rerun runs/pusht-synthetic-jepa-action-s0-9f2c1a0b4e7d/eval.rrd
+```
+
+The four policies plot on one axis, the imagined latent rollout is drawn against
+the real one, the planner's proposal spread says whether its search converged,
+and on the Franka task the arm itself is there with the camera frustum the model
+sees through. It works from Python too -- a `Trainer` callback, a hook on the
+benchmark loop -- and every logger accepts `None` for the recording, so
+instrumenting a script adds arguments rather than branches. See
+**[docs/guides/rerun.md](docs/guides/rerun.md)**.
 
 See **[docs/guides/benchmark.md](docs/guides/benchmark.md)** for why the goal
 comes from a recording, why actions are grouped rather than repeated, and what

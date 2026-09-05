@@ -14,11 +14,19 @@ ignored line.
 from __future__ import annotations
 
 from .loader import apply_overrides, coerce, config_hash, from_dict, load, save, to_dict
-from .schema import EvalConfig, ExperimentConfig, ModelConfig, TaskConfig, TrainConfig
+from .schema import (
+    EvalConfig,
+    ExperimentConfig,
+    LogConfig,
+    ModelConfig,
+    TaskConfig,
+    TrainConfig,
+)
 
 __all__ = [
     "EvalConfig",
     "ExperimentConfig",
+    "LogConfig",
     "ModelConfig",
     "TaskConfig",
     "TrainConfig",

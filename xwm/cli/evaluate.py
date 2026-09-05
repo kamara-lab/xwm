@@ -66,6 +66,14 @@ def run(
 
     evaluation = config.eval
     plan = evaluation.plan or PlanConfig()
+    from .train import _recording
+
+    recording = _recording(config, directory, "eval", "episode")
+    hook = None
+    if recording is not None:
+        from ..rerun import episode_hook
+
+        hook = episode_hook(recording)
     outcome = evaluate(
         model,
         task,
@@ -77,7 +85,10 @@ def run(
         seed=config.seed,
         record=evaluation.video,
         progress=progress,
+        on_step=hook,
     )
+    if recording is not None:
+        recording.close()
     payload = build(
         outcome,
         task=task,

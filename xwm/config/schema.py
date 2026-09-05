@@ -26,7 +26,14 @@ from typing import Any
 
 from ..bench.protocol import PlanConfig
 
-__all__ = ["EvalConfig", "ExperimentConfig", "ModelConfig", "TaskConfig", "TrainConfig"]
+__all__ = [
+    "EvalConfig",
+    "ExperimentConfig",
+    "LogConfig",
+    "ModelConfig",
+    "TaskConfig",
+    "TrainConfig",
+]
 
 
 @dataclass(frozen=True)
@@ -92,6 +99,32 @@ class EvalConfig:
 
 
 @dataclass(frozen=True)
+class LogConfig:
+    """Where a run reports itself, beyond the files it always writes.
+
+    Excluded from :func:`xwm.config.config_hash`, unlike every other section:
+    logging cannot change a result, so two runs that differ only in whether
+    they were watched are the same experiment and must land in the same
+    directory name.
+
+    Attributes:
+        rerun: write Rerun recordings into the run directory -- ``train.rrd``
+            from :mod:`xwm.cli.train`, ``eval.rrd`` from :mod:`xwm.cli.evaluate`.
+        spawn: also open the viewer as a child process. For a laptop.
+        connect: also stream to an already-running viewer at this gRPC address,
+            e.g. ``"rerun+http://127.0.0.1:9876/proxy"``. For watching a remote
+            run live while it still writes its own file.
+        every: log one in every ``every`` training callbacks. The callback
+            already fires only on ``train.log_every``, so this thins further.
+    """
+
+    rerun: bool = False
+    spawn: bool = False
+    connect: str = ""
+    every: int = 1
+
+
+@dataclass(frozen=True)
 class ExperimentConfig:
     """One run: a model, a task, how to train it, and how to measure it."""
 
@@ -99,6 +132,7 @@ class ExperimentConfig:
     task: TaskConfig = field(default_factory=TaskConfig)
     train: TrainConfig = field(default_factory=TrainConfig)
     eval: EvalConfig = field(default_factory=EvalConfig)
+    log: LogConfig = field(default_factory=LogConfig)
     seed: int = 0
     output_dir: str = "runs"
     name: str = ""
