@@ -48,16 +48,24 @@
 \providecommand{\xwmtheme}{light}
 \def\xwmlight{light}
 
-\definecolor{emerald}{HTML}{059669}
-\definecolor{emeraldlight}{HTML}{34D399}
+% kamara's palette (https://kamara.dev). It is monochrome: the structural
+% colour is blueprint, and the diagram separates things by weight, opacity and
+% rule rather than by hue -- which also means the light and dark builds are the
+% same drawing with the ramp read from the other end.
+\definecolor{paper}{HTML}{FAFAF8}
+\definecolor{blueprint}{HTML}{747974}
+\definecolor{blueprintlight}{HTML}{A8ADA7}
 
 \ifx\xwmtheme\xwmlight
-  \colorlet{accent}{emerald}
-  \definecolor{ink}{HTML}{0B3B2E}
-  \definecolor{muted}{HTML}{5B6B66}
-  \definecolor{chiptext}{HTML}{FFFFFF}
-  \definecolor{coretitle}{HTML}{065F46}
-  \def\boxfill{white}
+  \colorlet{accent}{blueprint}
+  \definecolor{ink}{HTML}{121412}
+  \definecolor{muted}{HTML}{5C615D}
+  % A chip is a filled pill, so it takes the ink/paper pair rather than the
+  % structural colour: paper on blueprint would not clear 4.5:1.
+  \definecolor{chipfill}{HTML}{121412}
+  \definecolor{chiptext}{HTML}{FAFAF8}
+  \definecolor{coretitle}{HTML}{121412}
+  \def\boxfill{paper}
   \def\boxfillop{1}
   \def\zonefillop{0.05}
   \def\corefillop{0.10}
@@ -67,12 +75,13 @@
   \def\arrowop{0.72}
   \def\obsimage{franka-observation.png}
 \else
-  \colorlet{accent}{emeraldlight}
-  \definecolor{ink}{HTML}{E4EDE9}
-  \definecolor{muted}{HTML}{9AA8A3}
-  \definecolor{chiptext}{HTML}{052E24}
-  \definecolor{coretitle}{HTML}{A7F3D0}
-  \def\boxfill{white}
+  \colorlet{accent}{blueprintlight}
+  \definecolor{ink}{HTML}{E4E5E2}
+  \definecolor{muted}{HTML}{9BA09A}
+  \definecolor{chipfill}{HTML}{FAFAF8}
+  \definecolor{chiptext}{HTML}{121412}
+  \definecolor{coretitle}{HTML}{E4E5E2}
+  \def\boxfill{paper}
   \def\boxfillop{0.04}
   \def\zonefillop{0.05}
   \def\corefillop{0.15}
@@ -106,7 +115,7 @@
     align=center, inner sep=4.5pt, minimum height=1.05cm, text=ink,
   },
   chip/.style={
-    draw=none, fill=accent, rounded corners=3.5pt, text=chiptext,
+    draw=none, fill=chipfill, rounded corners=3.5pt, text=chiptext,
     align=center, inner sep=3pt, minimum height=0.66cm, minimum width=0.92cm,
   },
   input/.style={

@@ -21,12 +21,13 @@ JSON is for comparing runs.
 
 ## Palettes, and their measured limits
 
-Two named palettes, chosen by what the chart is doing:
+Three named palettes, chosen by what the chart is doing:
 
 | palette | for | colours |
 | --- | --- | --- |
 | `"blue-orange"` (`CURVE_PALETTE`) | **curves**: losses, histories, error-vs-horizon | Wong's colourblind-safe blue, orange, sky blue, vermillion |
 | `"viridis"` (`MAGNITUDE_PALETTE`) | **magnitude**: images, PCA colourbars, many-way bars | perceptually uniform |
+| `"brand"` | **two-way**: real vs imagined, before vs after | the accent pair, `#367FC9` and `#C97F36` |
 
 Line charts usually carry two to four series and need maximum separation between
 them; the Wong family delivers adjacent-pair ΔE of 24–36 in OKLab, passing every
@@ -64,6 +65,57 @@ Two further consequences of using a sequential ramp categorically, both handled:
   reading a colour.
 - Its **middle** is desaturated and reads grey-ish. Series get distinct markers and
   line styles as well as colours, so identity never rests on hue alone.
+
+### The accent pair
+
+`"brand"` is `ACCENT` (`#367FC9`) and `AMBER` (`#C97F36`), both read off the
+kamara gradient. They are each other's channels reversed, which is why they sit
+at one lightness, and blue against orange is the pair dichromats separate best.
+Held to the same measurement as everything else here:
+
+| pair | normal-vision ΔE | CVD ΔE |
+| --- | --- | --- |
+| `#367FC9` / `#C97F36` | 27.1 | 22.4 |
+| Wong's own adjacent pairs, for scale | 27.1–36.2 | 24.6–30.1 |
+
+It stops at two slots, and asking for a third raises, because a third hue would
+have to come from outside the brand.
+
+## Chrome
+
+Everything that is *not* data — background, text, gridlines, spines, tick marks —
+comes from the [kamara design tokens](https://kamara.dev), the same ones this site
+is built from, so a figure sits on the same ground as the page around it instead
+of announcing itself as a white rectangle:
+
+| token | hex | used for |
+| --- | --- | --- |
+| `PAPER` | `#FAFAF8` | figure, axes and savefig background |
+| `INK` | `#121412` | titles, axis labels, annotations |
+| `MUTED` | `#5C615D` | tick labels |
+| `RULE` | `#CBCDCA` | spines and tick marks |
+| `GRID` | `#DCDEDB` | gridlines |
+| `ACCENT` | `#367FC9` | the one hue in the chrome: single-series charts, unlabelled scatters |
+
+`GRID` and `RULE` are `BLUEPRINT` (`#747974`) mixed over paper at 22% and 35%.
+Two steps rather than one: the frame should read before the ruling does, and a
+single flat grey for both makes a chart look boxed in. All six are exported from
+`xwm.plots`, and collected in `xwm.plots.BRAND`, if you are styling a figure by
+hand.
+
+`ACCENT` is the only hue in the chrome, and deliberately so: anything drawn in
+that blue reads as *the thing being pointed at* rather than as decoration.
+
+!!! warning "Accent in text"
+
+    `#367FC9` measures 3.99:1 against paper. That clears the 3:1 a line, marker
+    or rule needs, but not the 4.5:1 body text needs. These docs darken it one
+    step (`#2769AD`, 5.42:1) for link text and keep `#367FC9` for marks — do the
+    same for an annotation you expect to be read rather than seen.
+
+**The rest of the palette does not follow the brand, and should not.** Lightness
+alone cannot separate four overlaid curves, and taking hue out would give up the
+ΔE guarantees above, so `blue-orange` and viridis stay exactly as they are.
 
 ## Style
 

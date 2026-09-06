@@ -141,9 +141,11 @@ def plot_latent_pca(
     with plot_style(1):
         ax = ax or plt.subplots(figsize=(5, 4.2))[1]
         if labels is None:
-            from .style import viridis_colors
+            from .style import ACCENT
 
-            ax.scatter(proj[:, 0], proj[:, 1], s=14, color=viridis_colors(1)[0], alpha=0.75)
+            # No labels means no magnitude to encode, so this is one mark rather
+            # than a ramp sampled at one point: the brand accent, not viridis.
+            ax.scatter(proj[:, 0], proj[:, 1], s=14, color=ACCENT, alpha=0.75)
         else:
             scatter = ax.scatter(
                 proj[:, 0],

@@ -1,23 +1,48 @@
 /* ==========================================================================
-   xwm brand theme.
+   xwm docs theme.
 
-   One hue, taken from the logo: emerald #059669. The logo's geometry gives the
-   rest of the system: 18px cells with a 4.5px radius, a 1:4 radius-to-size ratio
-   that every rounded surface here reuses.
+   The neutrals are kamara's (https://kamara.dev), used as-is: paper #FAFAF8,
+   ink #121412, blueprint #747974, muted #5C615D. Those five are the anchors of
+   the ramp below (50, 300, 600, 700, 950); the rest are interpolated, keeping
+   the faint green cast the brand greys carry (G a step above R and B).
+
+   The accent is #367FC9, read off the brand gradient, with the warm end of that
+   same gradient (#C97F36 -- the accent's channels reversed) as its counterpart.
+   The neutrals still do the structural work; the accent marks one thing at a
+   time, which is what keeps it worth noticing.
+
+   Contrast decides which step of the accent gets used where. #367FC9 measures
+   3.99:1 on paper: enough for a rule, a mark or an underline, not enough for
+   text. Link text therefore takes accent-600 (5.42:1 on paper) in light and
+   accent-400 (6.95:1 on ink) in dark, and #367FC9 itself is kept for the marks.
+
+   The geometry stays xwm's own: 18px cells with a 4.5px radius, taken from the
+   logo, and the 1:4 radius-to-size ratio that every rounded surface here reuses.
    ========================================================================== */
 
 :root {
-  --xwm-50:  #ecfdf5;
-  --xwm-100: #d1fae5;
-  --xwm-200: #a7f3d0;
-  --xwm-300: #6ee7b7;
-  --xwm-400: #34d399;
-  --xwm-500: #10b981;
-  --xwm-600: #059669;  /* the logo */
-  --xwm-700: #047857;
-  --xwm-800: #065f46;
-  --xwm-900: #064e3b;
-  --xwm-950: #022c22;
+  --xwm-50:  #fafaf8;  /* paper */
+  --xwm-100: #f2f3f0;
+  --xwm-200: #e4e6e2;
+  --xwm-300: #cbcdca;  /* rule: blueprint at 35% over paper */
+  --xwm-400: #a8ada7;
+  --xwm-500: #8b908a;
+  --xwm-600: #747974;  /* blueprint */
+  --xwm-700: #5c615d;  /* muted */
+  --xwm-800: #3d423e;
+  --xwm-900: #262a27;
+  --xwm-950: #121412;  /* ink */
+
+  /* Accent, around #367FC9 (accent-500). Steps either side of it exist only so
+     that text can clear 4.5:1 in both schemes without changing hue. */
+  --xwm-accent-300: #8bc5ff;
+  --xwm-accent-400: #5da3e9;
+  --xwm-accent-500: #367fc9;  /* the brand accent */
+  --xwm-accent-600: #2769ad;
+  --xwm-accent-700: #1a5591;
+
+  --xwm-amber-400: #e9a35d;
+  --xwm-amber-500: #c97f36;  /* the gradient's warm end */
 
   --xwm-radius: 6px;
   --md-code-hl-color: var(--xwm-200);
@@ -27,47 +52,94 @@
    Keyed on the primary rather than the scheme, so these hold for the light
    scheme AND for the server-rendered first paint in "follow system" mode. The
    slate block below overrides them; equal specificity, so source order decides.
+
+   The header takes the paper ground and ink text, like kamara.dev's does, so
+   Material's primary is the background here and its "bg" token is the text.
    -------------------------------------------------------------------------- */
 
 [data-md-color-primary="custom"] {
-  --md-primary-fg-color:          var(--xwm-600);
-  --md-primary-fg-color--light:   var(--xwm-500);
-  --md-primary-fg-color--dark:    var(--xwm-800);
-  --md-primary-bg-color:          #ffffff;
-  --md-primary-bg-color--light:   rgba(255, 255, 255, 0.7);
+  --md-primary-fg-color:          var(--xwm-50);
+  --md-primary-fg-color--light:   var(--xwm-100);
+  --md-primary-fg-color--dark:    var(--xwm-200);
+  --md-primary-bg-color:          var(--xwm-950);
+  --md-primary-bg-color--light:   rgba(18, 20, 18, 0.62);
 
-  --md-accent-fg-color:           var(--xwm-700);
-  --md-accent-fg-color--transparent: rgba(5, 150, 105, 0.1);
+  --md-accent-fg-color:           var(--xwm-accent-600);
+  --md-accent-fg-color--transparent: rgba(54, 127, 201, 0.1);
 
-  --md-typeset-a-color:           var(--xwm-700);
+  --md-typeset-a-color:           var(--xwm-accent-text);
+
+  /* The page ground is paper, not white -- a rendered figure, a code block and
+     the prose around them all sit on one surface. */
+  --md-default-bg-color:          var(--xwm-50);
+  --md-default-bg-color--light:   rgba(250, 250, 248, 0.7);
+  --md-default-bg-color--lighter: rgba(250, 250, 248, 0.3);
+  --md-default-bg-color--lightest: rgba(250, 250, 248, 0.12);
+  --md-default-fg-color:          rgba(18, 20, 18, 0.87);
+  --md-default-fg-color--light:   rgba(18, 20, 18, 0.6);
+  --md-default-fg-color--lighter: rgba(18, 20, 18, 0.34);
+  --md-default-fg-color--lightest: rgba(18, 20, 18, 0.13);
+  --md-code-bg-color:             var(--xwm-100);
+
   --md-footer-bg-color:           var(--xwm-950);
-  --md-footer-bg-color--dark:     #011a14;
+  --md-footer-bg-color--dark:     #0b0d0b;
 
-  --xwm-surface:                  var(--xwm-50);
-  --xwm-border:                   rgba(5, 150, 105, 0.18);
-  --xwm-muted:                    #5b6b66;
+  --xwm-surface:                  var(--xwm-100);
+  --xwm-border:                   rgba(116, 121, 116, 0.32);
+  --xwm-muted:                    var(--xwm-700);
+  --xwm-strong:                   var(--xwm-950);
+
+  --xwm-accent:                   var(--xwm-accent-500);
+  --xwm-accent-text:              var(--xwm-accent-600);
+  --xwm-amber:                    var(--xwm-amber-500);
+  --xwm-rule:                     rgba(54, 127, 201, 0.42);
+  --xwm-texture-opacity:          0.62;
 }
 
-/* --- dark ---------------------------------------------------------------- */
+/* --- dark -----------------------------------------------------------------
+   kamara.dev is light-only, so there is nothing upstream to copy. The ramp is
+   inverted around the same two anchors instead of handing the scheme to
+   Material's blue-grey slate: ink becomes the ground, paper the text.
+   -------------------------------------------------------------------------- */
 
 [data-md-color-scheme="slate"] {
-  --md-hue: 170;
+  --md-hue: 120;
 
-  --md-primary-fg-color:          var(--xwm-900);
-  --md-primary-fg-color--light:   var(--xwm-700);
-  --md-primary-fg-color--dark:    var(--xwm-950);
-  --md-primary-bg-color:          #ffffff;
-  --md-primary-bg-color--light:   rgba(255, 255, 255, 0.7);
+  --md-primary-fg-color:          var(--xwm-950);
+  --md-primary-fg-color--light:   var(--xwm-900);
+  --md-primary-fg-color--dark:    #0b0d0b;
+  --md-primary-bg-color:          var(--xwm-50);
+  --md-primary-bg-color--light:   rgba(250, 250, 248, 0.62);
 
-  --md-accent-fg-color:           var(--xwm-300);
-  --md-accent-fg-color--transparent: rgba(52, 211, 153, 0.1);
+  --md-accent-fg-color:           var(--xwm-accent-400);
+  --md-accent-fg-color--transparent: rgba(93, 163, 233, 0.12);
 
-  --md-typeset-a-color:           var(--xwm-400);
-  --md-footer-bg-color:           #0b1512;
+  --md-typeset-a-color:           var(--xwm-accent-text);
 
-  --xwm-surface:                  rgba(16, 185, 129, 0.06);
-  --xwm-border:                   rgba(52, 211, 153, 0.22);
-  --xwm-muted:                    #9aa8a3;
+  --md-default-bg-color:          var(--xwm-950);
+  --md-default-bg-color--light:   rgba(18, 20, 18, 0.54);
+  --md-default-bg-color--lighter: rgba(18, 20, 18, 0.26);
+  --md-default-bg-color--lightest: rgba(18, 20, 18, 0.07);
+  --md-default-fg-color:          rgba(250, 250, 248, 0.9);
+  --md-default-fg-color--light:   rgba(250, 250, 248, 0.62);
+  --md-default-fg-color--lighter: rgba(250, 250, 248, 0.32);
+  --md-default-fg-color--lightest: rgba(250, 250, 248, 0.14);
+  --md-code-bg-color:             #1b1f1c;
+  --md-code-fg-color:             rgba(250, 250, 248, 0.86);
+  --md-code-hl-color:             rgba(250, 250, 248, 0.16);
+
+  --md-footer-bg-color:           #0b0d0b;
+
+  --xwm-surface:                  rgba(250, 250, 248, 0.05);
+  --xwm-border:                   rgba(250, 250, 248, 0.2);
+  --xwm-muted:                    var(--xwm-400);
+  --xwm-strong:                   var(--xwm-50);
+
+  --xwm-accent:                   var(--xwm-accent-400);
+  --xwm-accent-text:              var(--xwm-accent-400);
+  --xwm-amber:                    var(--xwm-amber-400);
+  --xwm-rule:                     rgba(93, 163, 233, 0.45);
+  --xwm-texture-opacity:          0.6;
 }
 
 /* --- typography ---------------------------------------------------------- */
@@ -100,7 +172,7 @@
 
 .md-header {
   box-shadow: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid var(--md-default-fg-color--lightest);
 }
 
 .md-header__title {
@@ -113,8 +185,105 @@
   width: 1.4rem;
 }
 
+/* One logo file serves both schemes. The mark is a flat ink monochrome, so
+   inverting it in dark mode lands on paper -- no second asset to keep in sync. */
+[data-md-color-scheme="slate"] .md-header__button.md-logo :is(img, svg) {
+  filter: invert(1);
+}
+
 .md-tabs {
   border-bottom: none;
+}
+
+/* --- "powered by kamara", under the site name ---------------------------- */
+
+/* Material's title is one 2.4rem line with the topics absolutely stacked inside
+   .md-header__ellipsis. Tightening the line to 1.45rem lifts the name into the
+   upper half and leaves room to hang the attribution off the bottom of the same
+   box, so it reads as a subtitle to "xwm" rather than as another nav item. The
+   topics keep their swap animation untouched. */
+
+.md-header__title {
+  line-height: 1.45rem;
+}
+
+.md-header__title > .md-header__ellipsis > .xwm-powered {
+  position: absolute;
+  top: 1.4rem;
+  left: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.28em;
+  color: var(--md-primary-bg-color);
+  font-size: 0.5rem;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: opacity 125ms;
+}
+
+.xwm-powered__label {
+  opacity: 0.55;
+  letter-spacing: 0.02em;
+}
+
+.xwm-powered__name {
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  border-bottom: 1px solid currentcolor;
+}
+
+.xwm-powered:hover {
+  color: var(--md-primary-bg-color);
+  opacity: 0.7;
+}
+
+/* The drawer toggle crowds the title on small bars; drop the words there. */
+@media screen and (max-width: 44.984375em) {
+  .md-header__title > .md-header__ellipsis > .xwm-powered {
+    display: none;
+  }
+
+  .md-header__title {
+    line-height: 2.4rem;
+  }
+}
+
+/* --- links ----------------------------------------------------------------
+   Accent-coloured, and underlined the way kamara.dev underlines one: offset
+   2px, the rule at partial strength going to full on hover. The colour is
+   accent-600 rather than #367FC9 because this is text and has to clear 4.5:1.
+   Only body prose gets the underline -- nav, tabs, tables of contents and cards
+   are already distinguished by position, and underlining them would turn the
+   page into a grid of rules. */
+
+.md-typeset a:not(.md-button):not(.headerlink):not(.footnote-backref) {
+  text-decoration: underline;
+  text-decoration-color: var(--xwm-rule);
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+  transition: text-decoration-color 125ms;
+}
+
+.md-typeset a:not(.md-button):not(.headerlink):hover {
+  text-decoration-color: var(--xwm-accent);
+}
+
+/* Cards, signposts and figure links carry their own frame; an underline inside
+   one reads as a second border. */
+.md-typeset :is(.grid.cards, .xwm-signpost, figure) a {
+  text-decoration: none;
+}
+
+.md-typeset .md-button {
+  border-radius: 999px;  /* kamara's pill */
+  border-color: var(--xwm-border);
+}
+
+.md-typeset .md-button--primary {
+  background: var(--xwm-accent-600);
+  border-color: var(--xwm-accent-600);
+  color: #ffffff;
 }
 
 /* --- rounded surfaces, at the logo's 1:4 ratio --------------------------- */
@@ -206,14 +375,68 @@
 
 /* --- home: hero ---------------------------------------------------------- */
 
+/* The texture is one mask (assets/texture-accent.png) carrying only the blob's
+   shape, in its ALPHA channel -- mask-image reads alpha, not luminance, so a
+   grayscale-without-alpha PNG would mask nothing and paint a filled rectangle.
+   The colour comes from the gradient underneath, which is why the accent pair
+   lives in this token file and is not baked into the image. The warm stop sits
+   at 62-88% because that is where the amber falls in the source. Grain goes on
+   as a second layer at device resolution rather than being stretched with the
+   mask, which is what grain wants. */
+
 .xwm-hero {
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.9rem;
-  padding: 2.4rem 0 1.6rem;
+  /* Room for the wash to resolve above and below the mark. The blob is as wide
+     as the hero and 720:323, so it needs about 0.45x the content width in
+     height; this padding is what keeps it from wanting to overflow vertically. */
+  padding: 4.6rem 0 4rem;
   text-align: center;
 }
+
+.xwm-hero::before,
+.xwm-hero::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  /* Exactly the hero's box, never past it. Overflowing the content column got
+     the right-hand lobe sliced off, and the fix that survives whatever does the
+     clipping is to not overflow at all. The hero's padding below is tuned so
+     this box lands near the mask's own 720:323, so the stretch is invisible. */
+  inset: 0;
+  pointer-events: none;
+  -webkit-mask-image: url("../assets/texture-accent.png");
+  mask-image: url("../assets/texture-accent.png");
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+.xwm-hero::before {
+  background: linear-gradient(
+    100deg,
+    var(--xwm-accent) 0%,
+    var(--xwm-accent) 62%,
+    var(--xwm-amber) 88%,
+    var(--xwm-amber) 100%
+  );
+  opacity: var(--xwm-texture-opacity);
+}
+
+/* feTurbulence rather than a noise tile: no second request, and it resolves at
+   whatever the device's pixel ratio is. */
+.xwm-hero::after {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23g)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+  opacity: 0.3;
+  mix-blend-mode: overlay;
+}
+
 
 .xwm-hero__grid {
   display: grid;
@@ -224,21 +447,16 @@
 
 .xwm-hero__cell {
   border-radius: 4.5px;
-  background: var(--xwm-600);
-}
-
-[data-md-color-scheme="slate"] .xwm-hero__cell {
-  background: var(--xwm-400);
+  background: var(--xwm-strong);
 }
 
 .xwm-hero__cell--masked {
   background: none;
-  border: 2.5px solid var(--xwm-600);
+  border: 2.5px solid var(--xwm-strong);
   opacity: 0.32;
 }
 
 [data-md-color-scheme="slate"] .xwm-hero__cell--masked {
-  border-color: var(--xwm-400);
   opacity: 0.4;
 }
 
@@ -247,11 +465,7 @@
   font-weight: 650;
   letter-spacing: -0.055em;
   line-height: 1;
-  color: var(--xwm-600);
-}
-
-[data-md-color-scheme="slate"] .xwm-hero__word {
-  color: var(--xwm-400);
+  color: var(--xwm-strong);
 }
 
 .xwm-hero__kicker {
@@ -259,12 +473,7 @@
   font-weight: 500;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--xwm-600);
-  opacity: 0.8;
-}
-
-[data-md-color-scheme="slate"] .xwm-hero__kicker {
-  color: var(--xwm-400);
+  color: var(--xwm-muted);
 }
 
 .xwm-hero__tagline {
@@ -307,7 +516,7 @@
   padding: 0.55rem 0.8rem;
   margin: 0.35rem 0;
   border: 1px solid var(--md-default-fg-color--lightest);
-  border-left: 3px solid var(--xwm-600);
+  border-left: 3px solid var(--xwm-strong);
   border-radius: var(--xwm-radius);
   background: var(--xwm-surface);
   font-size: 0.76rem;
@@ -364,10 +573,12 @@
   border-radius: var(--xwm-radius);
 }
 
-/* The example figures are PNGs and GIFs drawn on white, so they need an opaque
-   backdrop in dark mode. The diagrams are transparent SVGs and must not get one. */
+/* The example figures are PNGs and GIFs drawn on paper (xwm.plots.PAPER, the
+   same #FAFAF8 as this page in light mode), so they need that exact backdrop in
+   dark mode rather than a white one that would ring them. The diagrams are
+   transparent SVGs and must not get a backdrop at all. */
 .md-typeset figure img[src*="outputs/"] {
-  background: #ffffff;
+  background: var(--xwm-50);
 }
 
 .md-typeset .xwm-diagram img {

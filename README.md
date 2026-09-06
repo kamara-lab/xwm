@@ -1,16 +1,20 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/kamara-lab/xwm/refs/heads/main/assets/logo.svg" alt="xwm" width="300">
+  <img src="https://raw.githubusercontent.com/kamara-lab/xwm/refs/heads/main/assets/banner.webp" alt="xwm — world models" width="100%">
 </p>
 
 <p align="center"><strong>Action-conditioned world models for robotics.</strong></p>
 
 <p align="center">
-  <a href="https://pypi.org/project/xwm/"><img alt="PyPI version" src="https://img.shields.io/pypi/v/xwm?style=flat-square&color=059669&labelColor=ffffff"></a>
-  <a href="https://www.python.org/downloads/"><img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-059669?style=flat-square&labelColor=ffffff"></a>
-  <a href="https://github.com/jax-ml/jax"><img alt="JAX" src="https://img.shields.io/badge/built%20on-JAX%20%20-059669?style=flat-square&labelColor=ffffff"></a>
-  <a href="#tests"><img alt="Tests" src="https://img.shields.io/badge/tests-565%20passing-059669?style=flat-square&labelColor=ffffff"></a>
-  <a href="https://docs.astral.sh/ruff/"><img alt="Ruff" src="https://img.shields.io/badge/lint-ruff-059669?style=flat-square&labelColor=ffffff"></a>
-  <a href="#license"><img alt="Apache 2.0" src="https://img.shields.io/badge/license-Apache--2.0-059669?style=flat-square&labelColor=ffffff"></a>
+  <sub>Powered by <a href="https://kamara.dev"><b>kamara</b></a></sub>
+</p>
+
+<p align="center">
+  <a href="https://pypi.org/project/xwm/"><img alt="PyPI version" src="https://img.shields.io/pypi/v/xwm?style=flat-square&color=367FC9&labelColor=FAFAF8"></a>
+  <a href="https://www.python.org/downloads/"><img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-367FC9?style=flat-square&labelColor=FAFAF8"></a>
+  <a href="https://github.com/jax-ml/jax"><img alt="JAX" src="https://img.shields.io/badge/built%20on-JAX%20%20-367FC9?style=flat-square&labelColor=FAFAF8"></a>
+  <a href="#tests"><img alt="Tests" src="https://img.shields.io/badge/tests-570%20passing-367FC9?style=flat-square&labelColor=FAFAF8"></a>
+  <a href="https://docs.astral.sh/ruff/"><img alt="Ruff" src="https://img.shields.io/badge/lint-ruff-367FC9?style=flat-square&labelColor=FAFAF8"></a>
+  <a href="#license"><img alt="Apache 2.0" src="https://img.shields.io/badge/license-Apache--2.0-367FC9?style=flat-square&labelColor=FAFAF8"></a>
 </p>
 
 ---
@@ -20,7 +24,10 @@
 The components are independently useful: ViT encoders over 2D patches or 3D tubelets and MLP encoders over state vectors; transformer or residual-MLP dynamics; categorical reward and value heads, pessimistic Q-ensembles, squashed-Gaussian policies; latent-prediction, SIGReg, VICReg, InfoNCE and TD objectives; CEM, MPPI, gradient and PUCT-MCTS planners; a family-agnostic trainer with EMA targets, parameter freezing and a trajectory replay buffer.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/kamara-lab/xwm/refs/heads/main/docs/assets/world-model-dark.svg" alt="Encoder, latent dynamics and heads" width="720">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/kamara-lab/xwm/refs/heads/main/docs/assets/world-model-dark.svg">
+    <img src="https://raw.githubusercontent.com/kamara-lab/xwm/refs/heads/main/docs/assets/world-model-light.svg" alt="Encoder, latent dynamics and heads" width="720">
+  </picture>
 </p>
 
 ## Install

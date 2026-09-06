@@ -238,8 +238,8 @@ def main():
     fig, ax = plt.subplots(figsize=(5.6, 5))
     initial = jnp.asarray(results["no-op"])
     limit = float(jnp.max(initial)) * 1.05
-    ax.plot([0, limit], [0, limit], color="#999999", linewidth=1, linestyle="--",
-            label="no better than doing nothing")
+    ax.plot([0, limit], [0, limit], color=xwm.plots.BLUEPRINT, linewidth=1,
+            linestyle="--", label="no better than doing nothing")
     for i, policy in enumerate(["random", "planner"]):
         style = xwm.plots.series_style(i, 2, xwm.plots.CURVE_PALETTE)
         style["linestyle"] = "None"

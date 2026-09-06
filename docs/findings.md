@@ -824,4 +824,30 @@ Curves use `"blue-orange"` instead: Wong's colourblind-safe family, adjacent-pai
 ΔE of 24–36, passing every check in light and dark mode. Line charts carry two to
 four series and need maximum separation; a sequential ramp is the wrong tool for
 them, and its dark and light extremes have poor contrast against the plot surface
-at either end. See [Figures and tables](guides/figures.md).
+at either end.
+
+The brand around the data is a separate decision from the data itself. The plot
+**chrome** takes the [kamara](https://kamara.dev) tokens exactly — paper
+`#FAFAF8`, ink `#121412`, blueprint `#747974` — so a figure and the page it lands
+on share one ground.
+
+The brand's accent pair is held to the same measurement rather than waved through
+for being the brand's. `#367FC9` and `#C97F36` are each other's channels reversed,
+so they sit at one lightness, and blue against orange is the pair dichromats
+separate best:
+
+| pair | normal-vision ΔE | CVD ΔE |
+| --- | --- | --- |
+| `#367FC9` / `#C97F36` | 27.1 | 22.4 |
+| Wong's own adjacent pairs, for scale | 27.1–36.2 | 24.6–30.1 |
+
+It passes, so it ships as the two-slot `"brand"` palette — and stops at two,
+because a third hue would have to come from outside the brand. One number governs
+where the accent may be used rather than merely which chart: `#367FC9` is 3.99:1
+on paper, enough for a mark and not for text, so link text darkens one step to
+`#2769AD` (5.42:1) and the marks keep `#367FC9`.
+
+The wider **series** palettes still do not follow the brand: lightness alone
+cannot separate four overlaid curves, so extending the accent to four or five
+slots would have traded the ΔE floor above for visual consistency. See
+[Figures and tables](guides/figures.md).

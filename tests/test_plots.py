@@ -55,6 +55,85 @@ def test_rc_params_use_viridis_sequentially():
     assert len(rc["axes.prop_cycle"]) == 3
 
 
+def _oklab(rgb):
+    """sRGB -> OKLab, the space every separation number here is measured in."""
+    rgb = np.asarray(rgb)
+    lin = np.where(rgb <= 0.04045, rgb / 12.92, ((rgb + 0.055) / 1.055) ** 2.4)
+    m1 = np.array(
+        [
+            [0.4122214708, 0.5363325363, 0.0514459929],
+            [0.2119034982, 0.6806995451, 0.1073969566],
+            [0.0883024619, 0.2817188376, 0.6299787005],
+        ]
+    )
+    m2 = np.array(
+        [
+            [0.2104542553, 0.7936177850, -0.0040720468],
+            [1.9779984951, -2.4285922050, 0.4505937099],
+            [0.0259040371, 0.7827717662, -0.8086757660],
+        ]
+    )
+    return m2 @ np.cbrt(m1 @ lin)
+
+
+def test_chrome_comes_from_the_kamara_tokens():
+    """Everything that is not data is brand surface, not matplotlib defaults."""
+    rc = xwm.plots.rc_params(3)
+    assert rc["figure.facecolor"] == xwm.plots.PAPER == "#FAFAF8"
+    assert rc["savefig.facecolor"] == xwm.plots.PAPER
+    assert rc["axes.facecolor"] == xwm.plots.PAPER
+    assert rc["text.color"] == rc["axes.labelcolor"] == xwm.plots.INK == "#121412"
+    assert rc["xtick.labelcolor"] == rc["ytick.labelcolor"] == xwm.plots.MUTED
+    assert rc["grid.color"] == xwm.plots.GRID
+    assert rc["axes.edgecolor"] == xwm.plots.RULE
+    # Markers punch out of the paper ground, not a white one that would ring
+    # them once the figure lands on the page.
+    assert xwm.plots.series_style(0, 2)["markeredgecolor"] == xwm.plots.PAPER
+
+
+def test_chrome_is_recessive_in_the_right_order():
+    """Grid under rule under text: three steps, not one flat grey."""
+    from matplotlib.colors import to_rgb
+
+    lightness = [sum(to_rgb(c)) / 3 for c in (xwm.plots.INK, xwm.plots.MUTED,
+                                              xwm.plots.RULE, xwm.plots.GRID,
+                                              xwm.plots.PAPER)]
+    assert lightness == sorted(lightness), "ink -> paper must increase monotonically"
+
+
+def test_the_brand_pair_is_the_accent_and_its_reversal():
+    """The two accents are each other's channels reversed, so they share a
+    lightness -- and the pair stops at two, because a third hue would have to
+    come from outside the brand."""
+    assert xwm.plots.ACCENT == "#367FC9"
+    assert xwm.plots.AMBER == "#C97F36"
+    assert xwm.plots.AMBER[1:] == "".join(
+        reversed([xwm.plots.ACCENT[1:][i : i + 2] for i in range(0, 6, 2)])
+    )
+    assert xwm.plots.palette_colors(2, "brand") == ["#367FC9", "#C97F36"]
+    with pytest.raises(ValueError, match="exceeds the 2"):
+        xwm.plots.palette_colors(3, "brand")
+
+
+def test_the_brand_pair_clears_the_separation_floor():
+    """The accent pair is held to the same measured floor as every other
+    palette, not waved through because it is the brand's."""
+    from matplotlib.colors import to_rgb
+
+    a, b = (_oklab(to_rgb(c)) for c in xwm.plots.BRAND_PAIR)
+    assert float(np.linalg.norm(a - b)) * 100 > 15.0
+
+
+def test_series_colours_do_not_collapse_to_the_neutral_brand():
+    """Lightness alone cannot separate four overlaid curves, so the rebrand
+    stops at the chrome and the measured-ΔE palettes are left intact."""
+    from matplotlib.colors import to_rgb
+
+    for hexcolor in xwm.plots.palette_colors(4, "blue-orange"):
+        r, g, b = to_rgb(hexcolor)
+        assert max(r, g, b) - min(r, g, b) > 0.2, f"{hexcolor} is greyscale"
+
+
 def test_viridis_style_context_is_scoped():
     import matplotlib.pyplot as plt
 

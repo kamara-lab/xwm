@@ -1,6 +1,6 @@
 """Plot palettes, with each one's categorical limit enforced in code.
 
-Two named palettes, chosen by what the chart is doing:
+Three named palettes, chosen by what the chart is doing:
 
 ``"blue-orange"`` (the default for **curves** -- losses, training histories,
 error-vs-horizon) is the Wong colourblind-safe family. Line charts usually carry
@@ -11,6 +11,15 @@ light and dark mode.
 ``"viridis"`` (the default for **magnitude** -- images, PCA colourbars, and
 categorical bars where five configurations must be told apart) is perceptually
 uniform, which is what a continuous quantity wants.
+
+``"brand"`` is the two-colour accent pair, :data:`ACCENT` and :data:`AMBER`, for
+the very common chart that compares exactly two things -- real against imagined,
+before against after -- and should look like it belongs to the rest of the site.
+Both are read off the kamara gradient, and they are each other's channels
+reversed, so they sit at one lightness. Measured the same way as everything else
+below: normal-vision ΔE 27.1, CVD 22.4, inside the band Wong's own adjacent pairs
+occupy. It stops at two, because a third hue would have to come from outside the
+brand.
 
 Using viridis for *categorical* series means sampling discrete steps from a
 sequential ramp. That works, but only up to a point, and the point is measurable
@@ -42,6 +51,43 @@ Two further consequences of using a sequential ramp categorically:
 * Its middle is desaturated and reads grey-ish. Series are given distinct
   markers and line styles as well as colours, so identity never rests on hue
   alone.
+
+Chrome
+------
+
+Everything that is *not* data -- background, text, gridlines, spines, tick marks
+-- comes from the kamara design tokens (https://kamara.dev), so a figure sits on
+the same ground as the page around it instead of announcing itself as a white
+rectangle:
+
+============  =========  =================================================
+token         hex        used for
+============  =========  =================================================
+:data:`PAPER`      #FAFAF8    figure, axes and savefig background
+:data:`INK`        #121412    titles, axis labels, annotations
+:data:`MUTED`      #5C615D    tick labels
+:data:`RULE`       #CBCDCA    spines and tick marks
+:data:`GRID`       #DCDEDB    gridlines
+============  =========  =================================================
+
+``GRID`` and ``RULE`` are :data:`BLUEPRINT` (#747974) mixed over paper at 22% and
+35%. Two steps rather than one: the frame should read before the ruling does, and
+a single flat grey for both makes a chart look boxed in.
+
+The chrome is otherwise neutral, and deliberately: :data:`ACCENT` is the only hue
+in it, so anything drawn in that blue reads as *the thing being pointed at*
+rather than as decoration. It is what a single-series chart is drawn in, and what
+an unlabelled PCA scatter uses.
+
+One caveat if you reach for :data:`ACCENT` in text. Against paper it measures
+3.99:1, which clears the 3:1 that a line, a marker or a rule needs but not the
+4.5:1 that body text does. The docs therefore darken it one step for link text
+and keep #367FC9 for marks; do the same for an annotation you expect to be read
+rather than seen.
+
+The rest of the palette does not follow the brand and should not. Lightness alone
+cannot separate four overlaid curves, and taking hue out would give up the ΔE
+guarantees above, so :data:`BLUE_ORANGE` and viridis stay exactly as they are.
 """
 
 from __future__ import annotations
@@ -60,8 +106,24 @@ MAX_CATEGORICAL = 5
 #: at a glance. Passes every palette check in light and dark mode.
 BLUE_ORANGE = ("#0072B2", "#E69F00", "#56B4E9", "#D55E00")
 
+#: The brand accent, and the warm end of the same gradient it is taken from --
+#: the accent's own channels reversed, which is why the two sit at one lightness.
+#: Blue against orange is the pair dichromats separate best, and this one measures
+#: normal-vision ΔE 27.1 / CVD 22.4, inside the band Wong's own adjacent pairs
+#: occupy (24.6-36.2 / 24.6-30.1).
+ACCENT = "#367FC9"
+AMBER = "#C97F36"
+
+#: The accent pair as a categorical palette. Two slots, and only two: a third
+#: hue would have to come from somewhere other than the brand.
+BRAND_PAIR = (ACCENT, AMBER)
+
 #: name -> (colors or None for a sampled ramp, maximum series)
-PALETTES: dict[str, int] = {"viridis": MAX_CATEGORICAL, "blue-orange": len(BLUE_ORANGE)}
+PALETTES: dict[str, int] = {
+    "viridis": MAX_CATEGORICAL,
+    "blue-orange": len(BLUE_ORANGE),
+    "brand": len(BRAND_PAIR),
+}
 
 #: Palette for line charts: losses, training curves, error-vs-horizon.
 CURVE_PALETTE = "blue-orange"
@@ -76,8 +138,38 @@ LINESTYLES = ("-", "--", "-.", ":", (0, (3, 1, 1, 1)))
 #: Sequential colormap for magnitude (images, heatmaps, spectra).
 SEQUENTIAL_CMAP = "viridis"
 
-_GRID = "#d9d9d9"
-_INK = "#222222"
+#: Background. kamara's warm off-white, not pure white -- a figure dropped into
+#: the docs or the README sits on the same ground as the page around it.
+PAPER = "#FAFAF8"
+
+#: Text: titles, axis labels, annotations.
+INK = "#121412"
+
+#: Rules and borders at full strength. Used here only as the tint source for
+#: :data:`GRID` and :data:`RULE`, which are what actually reach a figure.
+BLUEPRINT = "#747974"
+
+#: Secondary text: tick labels, colourbar labels. Recedes behind :data:`INK`.
+MUTED = "#5C615D"
+
+#: Blueprint at 22% over paper. Gridlines, which must sit under the data.
+GRID = "#DCDEDB"
+
+#: Blueprint at 35% over paper. Spines and tick marks, one step up from the grid
+#: so the frame reads before the ruling does.
+RULE = "#CBCDCA"
+
+#: Brand token -> hex, for callers styling a figure by hand.
+BRAND = {
+    "paper": PAPER,
+    "ink": INK,
+    "blueprint": BLUEPRINT,
+    "muted": MUTED,
+    "grid": GRID,
+    "rule": RULE,
+    "accent": ACCENT,
+    "amber": AMBER,
+}
 
 
 def palette_colors(n: int, palette: str = MAGNITUDE_PALETTE) -> list[str]:
@@ -101,6 +193,8 @@ def palette_colors(n: int, palette: str = MAGNITUDE_PALETTE) -> list[str]:
         )
     if palette == "blue-orange":
         return list(BLUE_ORANGE[:n])
+    if palette == "brand":
+        return list(BRAND_PAIR[:n])
     return viridis_colors(n)
 
 
@@ -144,7 +238,7 @@ def series_style(index: int, n_series: int, palette: str = MAGNITUDE_PALETTE) ->
         "linestyle": LINESTYLES[index % len(LINESTYLES)],
         "linewidth": 2.0,
         "markersize": 5.0,
-        "markeredgecolor": "white",
+        "markeredgecolor": PAPER,
         "markeredgewidth": 0.6,
     }
 
@@ -158,26 +252,30 @@ def rc_params(n_series: int = MAX_CATEGORICAL, palette: str = MAGNITUDE_PALETTE)
         "image.cmap": SEQUENTIAL_CMAP,
         "axes.grid": True,
         "axes.grid.axis": "y",
-        "grid.color": _GRID,
+        "grid.color": GRID,
         "grid.linewidth": 0.6,
-        "grid.alpha": 0.8,
-        "axes.edgecolor": _GRID,
+        "grid.alpha": 1.0,
+        "axes.edgecolor": RULE,
         "axes.linewidth": 0.8,
         "axes.spines.top": False,
         "axes.spines.right": False,
-        "axes.labelcolor": _INK,
+        "axes.labelcolor": INK,
         "axes.titlesize": 11,
-        "text.color": _INK,
-        "xtick.color": _INK,
-        "ytick.color": _INK,
+        "axes.titlecolor": INK,
+        "text.color": INK,
+        "xtick.color": RULE,
+        "ytick.color": RULE,
+        "xtick.labelcolor": MUTED,
+        "ytick.labelcolor": MUTED,
         "xtick.labelsize": 9,
         "ytick.labelsize": 9,
         "legend.frameon": False,
         "legend.fontsize": 9,
         "lines.linewidth": 2.0,
         "lines.markersize": 5.0,
-        "figure.facecolor": "white",
-        "savefig.facecolor": "white",
+        "figure.facecolor": PAPER,
+        "savefig.facecolor": PAPER,
+        "axes.facecolor": PAPER,
         "font.size": 10,
     }
 
