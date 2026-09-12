@@ -8,12 +8,9 @@ rendering a single pixel.
 ## Three pieces and no decoder
 
 <figure class="xwm-diagram" markdown="1">
-  ![An action-conditioned latent world model](../assets/world-model-light.svg#only-light){ width="820" } ![An action-conditioned latent world model](../assets/world-model-dark.svg#only-dark){ width="820" }
+  ![Observation passes through the encoder and dynamics to a planner, which chooses an action](../assets/world-model-light.svg#only-light){ width="1040" } ![Observation passes through the encoder and dynamics to a planner, which chooses an action](../assets/world-model-dark.svg#only-dark){ width="1040" }
   <figcaption>
-    Three learned pieces, one of which is optional. The encoder runs once per
-    observation; the dynamics model runs once per imagined step; the heads read
-    scalars and distributions off a latent. Nothing maps <em>Z</em> back to
-    <em>O</em>.
+    The shared encoder and dynamics support planning; optional heads estimate rewards and values.
   </figcaption>
 </figure>
 
