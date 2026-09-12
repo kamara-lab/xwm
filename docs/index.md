@@ -29,24 +29,19 @@ hide:
 
 ## Overview
 
-`xwm` is a JAX library for action-conditioned latent world models. A model is
-three parts: an encoder \(h: O \rightarrow Z\), a dynamics model
-\(d: Z \times A \rightarrow Z\), and whatever prediction heads the training signal
-requires. Every objective and every planner operates in \(Z\).
+`xwm` is a JAX library for world models: models that learn **what might happen
+when an agent takes an action**. An encoder turns images or sensor readings into
+a compact summary. A dynamics model uses that summary and a possible action to
+predict what comes next. A planner compares possible outcomes to choose a move.
 
-The library contains no decoder and no pixel-reconstruction loss. Encoders accept
-an arbitrary subset of the token grid, so masked positions cost nothing to
-compute, and planners reach the dynamics through a single
-\((z, a) \rightarrow z\) closure. That one closure is what lets a single set of
-planners serve every model in the library.
+The model predicts useful internal representations rather than drawing future
+images. Optional prediction heads estimate things like rewards and values.
+The same planning tools work across the library's model families.
 
 <figure class="xwm-diagram" markdown="1">
-  ![An action-conditioned latent world model](assets/world-model-light.svg#only-light){ width="820" } ![An action-conditioned latent world model](assets/world-model-dark.svg#only-dark){ width="820" }
+  ![Observation passes through the encoder and dynamics to a planner, which chooses an action](assets/world-model-light.svg#only-light){ width="1040" } ![Observation passes through the encoder and dynamics to a planner, which chooses an action](assets/world-model-dark.svg#only-dark){ width="1040" }
   <figcaption>
-    The observation is a real frame from the Franka FR3 environment in
-    <code>xwm.envs</code>, at the resolution the encoder is given. Everything after
-    the encoder happens inside <em>Z</em>, which is why one dynamics closure serves
-    every family and every planner in the library.
+    Predict in a compact internal state; choose actions toward a goal or reward.
   </figcaption>
 </figure>
 

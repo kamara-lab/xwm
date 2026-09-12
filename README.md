@@ -19,14 +19,14 @@
 
 ---
 
-`xwm` is a JAX-based library for **action-conditioned latent world models**: an encoder $h: O \rightarrow Z$, a dynamics model $d: Z \times A \rightarrow Z$, and whatever prediction heads the training signal requires. Every objective and every planner operates in $Z$. The library contains no decoder and no pixel-reconstruction loss. Encoders accept an arbitrary subset of the token grid, so masked positions cost nothing to compute, and planners reach the dynamics through a single $(z, a) \rightarrow z$ closure, which is what lets one set of planners serve every model.
+`xwm` is a JAX library for **world models that learn what happens when an agent takes an action**. An encoder keeps the key details from images or sensor readings. A dynamics model predicts how those details change with each possible move. A planner uses those predictions to choose an action. All of this happens in a compact internal representation, without generating future images.
 
 The components are independently useful: ViT encoders over 2D patches or 3D tubelets and MLP encoders over state vectors; transformer or residual-MLP dynamics; categorical reward and value heads, pessimistic Q-ensembles, squashed-Gaussian policies; latent-prediction, SIGReg, VICReg, InfoNCE and TD objectives; CEM, MPPI, gradient and PUCT-MCTS planners; a family-agnostic trainer with EMA targets, parameter freezing and a trajectory replay buffer.
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/kamara-lab/xwm/refs/heads/main/docs/assets/world-model-dark.svg">
-    <img src="https://raw.githubusercontent.com/kamara-lab/xwm/refs/heads/main/docs/assets/world-model-light.svg" alt="Encoder, latent dynamics and heads" width="720">
+    <img src="https://raw.githubusercontent.com/kamara-lab/xwm/refs/heads/main/docs/assets/world-model-light.svg" alt="Observation passes through the encoder and dynamics to a planner, which chooses an action" width="1040">
   </picture>
 </p>
 

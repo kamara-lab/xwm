@@ -1,4 +1,9 @@
-% The diagram on the documentation home page: an action-conditioned latent world
+% Legacy technical diagram. The introductory SVGs are now generated with
+% python tools/build_world_model_diagram.py from the repository root.
+% Compile this file only for the standalone technical PDF; do not overwrite
+% world-model-light.svg or world-model-dark.svg with this legacy version.
+%
+% An action-conditioned latent world
 % model, drawn in TikZ so the maths is set by LaTeX rather than faked in SVG text.
 %
 % The observation is a real frame from xwm.envs.FrankaEnv, so the picture shows
@@ -24,13 +29,10 @@
 %   Image.fromarray(((src ** 1.9) * 255).astype(np.uint8)) \
 %        .save("docs/assets/franka-observation-dark.png", optimize=True)
 %
-% Build both themes and convert to SVG (requires TeX Live and poppler):
+% Build the legacy technical PDF (requires TeX Live):
 %
 %   cd docs/assets
-%   pdflatex -jobname=world-model-light "\def\xwmtheme{light}\input{world-model.tex}"
-%   pdflatex -jobname=world-model-dark  "\def\xwmtheme{dark}\input{world-model.tex}"
-%   pdftocairo -svg world-model-light.pdf world-model-light.svg
-%   pdftocairo -svg world-model-dark.pdf  world-model-dark.svg
+%   pdflatex world-model.tex
 %
 % The SVGs are committed, so neither the docs build nor CI needs LaTeX.
 %
